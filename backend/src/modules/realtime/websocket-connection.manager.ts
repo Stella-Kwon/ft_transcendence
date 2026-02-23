@@ -23,7 +23,7 @@ export class WebSocketConnectionManager {
   private pingIntervals = new Map<string, NodeJS.Timeout>(); // socketId -> pingInterval
   private pendingPings = new Map<string, { timestamp: number; missedPongs: number }>(); // socketId -> ping info
   private messageBuffer = new Map<string, any[]>(); // userId -> buffered messages
-  
+
   constructor(
     private connectionService: ConnectionService,
     private roomService: RoomService,
@@ -50,7 +50,6 @@ export class WebSocketConnectionManager {
 
     const { id: userId, name, email } = user;
     const connectionId = randomUUID();
-  
 
     const wsConnection: WebSocketConnection = {
       socketId,
@@ -61,31 +60,23 @@ export class WebSocketConnectionManager {
       entityManager: request.entityManager
     };
 
-    //check if user has existing connections
-    const existingConnections = this.getUserConnections(userId);
-    if (existingConnections.length > 0) {
-      console.log(`🔍 User ${userId} has ${existingConnections.length} existing connections (multi-device support enabled)`);
-    }
-
     // Store connection
     this.connections.set(socketId, wsConnection);
 
     // Register with connection service
     this.connectionService.createConnection(connectionId, socketId, email, userId, name);
 
-    //log user status update
+    // Emit online status
     this.eventService.emitUserStatusUpdate({ userId, isOnline: true });
 
     // Initialize connection
     await this.initializeConnection(wsConnection);
 
-    console.log(`WebSocket connection established: ${socketId} for user: ${userId}`);
     return wsConnection;
   }
 
   private async initializeConnection(wsConnection: WebSocketConnection) {
     if (wsConnection.entityManager) {
-      // flush buffered messages when user reconnects (before session restoration)
       await this.flushBufferedMessages(wsConnection.userId);
       await this.restoreUserSession(wsConnection);
     } else {
@@ -97,7 +88,6 @@ export class WebSocketConnectionManager {
 
   private async restoreUserSession(wsConnection: WebSocketConnection) {
     try {
-      // delegate session restoration to SyncService
       await this.syncService.restoreUserSession(
         wsConnection.entityManager!,
         wsConnection.userId,
@@ -108,7 +98,7 @@ export class WebSocketConnectionManager {
     }
   }
 
-  // wait for EntityManager to become available
+  // Wait for EntityManager to become available
   private async waitForEntityManager(wsConnection: WebSocketConnection) {
     console.error('EntityManager is not available, waiting for it to become available...');
 
@@ -117,14 +107,11 @@ export class WebSocketConnectionManager {
     const retryInterval = 1000;
 
     const attemptCheck = async () => {
-      // EntityManager is already forked in request, no need to recreate
       if (wsConnection.entityManager) {
-        await this.restoreUserSession(wsConnection); // restore session after EntityManager becomes available
-        console.log(`EntityManager now available, session restored`);
+        await this.restoreUserSession(wsConnection);
       } else {
         retryCount++;
         if (retryCount < maxRetries) {
-          console.log(`EntityManager availability check attempt ${retryCount}/${maxRetries}, retrying in ${retryInterval}ms...`);
           setTimeout(attemptCheck, retryInterval);
         } else {
           console.error(`EntityManager not available after ${maxRetries} attempts, closing connection`);
@@ -135,14 +122,13 @@ export class WebSocketConnectionManager {
 
     attemptCheck();
   }
-  // setup ping interval
+
+  // Setup ping interval
   private setupPingInterval(wsConnection: WebSocketConnection) {
     const pingInterval = setInterval(() => {
       if (wsConnection.socket.readyState === WebSocket.OPEN) {
-        // simply send ping and check connection status
         this.sendPingAndTrack(wsConnection);
       } else {
-        // if socket is already closed, clean up
         this.handleConnectionClose(wsConnection.socketId);
       }
     }, 30000); // 30 seconds
@@ -150,21 +136,18 @@ export class WebSocketConnectionManager {
     this.pingIntervals.set(wsConnection.socketId, pingInterval);
   }
 
-  // send ping and track connection status
+  // Send ping and track connection status
   private sendPingAndTrack(wsConnection: WebSocketConnection) {
     const socketId = wsConnection.socketId;
     const pendingPing = this.pendingPings.get(socketId);
-    
-    // if previous ping has not received pong yet
+
     if (pendingPing) {
       const timeSinceLastPing = new Date().getTime() - pendingPing.timestamp;
-      
-      // if 60 seconds have passed since last ping, consider it missed
+
       if (timeSinceLastPing > 60000) {
         pendingPing.missedPongs++;
         console.warn(`Missed pong from ${wsConnection.userId} (${pendingPing.missedPongs}/3)`);
-        
-        // if 3 consecutive pongs are not received, close connection
+
         if (pendingPing.missedPongs >= 3) {
           console.error(`Connection ${socketId} unresponsive after 3 missed pongs, closing connection`);
           this.handleConnectionClose(socketId);
@@ -173,56 +156,43 @@ export class WebSocketConnectionManager {
       }
     }
 
-    // send new ping
     const pingMessage = this.messageService.createPingMessage();
     this.sendMessage(wsConnection, pingMessage);
-    
-    // start/update ping tracking
+
     this.pendingPings.set(socketId, {
       timestamp: new Date().getTime(),
       missedPongs: pendingPing?.missedPongs || 0
     });
-    
-    // console.log(`Ping sent to ${wsConnection.userId}`);
   }
 
-  // handle pong response (called by WebSocketMessageHandler)
+  // Handle pong response (called by WebSocketMessageHandler)
   handlePongReceived(socketId: string) {
     const pendingPing = this.pendingPings.get(socketId);
     if (pendingPing) {
-      const latency = new Date().getTime() - pendingPing.timestamp;
-      // console.log(`Pong received from ${socketId}, latency: ${latency}ms`);
-      
-      // if pong is received, remove pending ping
       this.pendingPings.delete(socketId);
     }
   }
 
-  // handle connection close
+  // Handle connection close
   async handleConnectionClose(socketId: string) {
     const wsConnection = this.connections.get(socketId);
     if (!wsConnection) return;
 
-    console.log(`WebSocket connection closed: ${socketId} for user: ${wsConnection.userId}`);
-    await this.eventService.emitUserStatusUpdate({ userId: wsConnection.userId, isOnline: false });
     // Clear ping interval
     const pingInterval = this.pingIntervals.get(socketId);
     if (pingInterval) {
       clearInterval(pingInterval);
       this.pingIntervals.delete(socketId);
     }
-
-    // Clear pending ping tracking
     this.pendingPings.delete(socketId);
 
-    // save session state only (do not remove from room)
-    const userRooms = this.roomService.getUserRoomsFromMemory(wsConnection.userId);
-
-    // Remove from connection service
+    // Remove from connection tracking BEFORE emitting status
+    // so isUserOnline() returns false when the event listener checks it
     this.connectionService.removeConnection(wsConnection.connectionId);
-
-    // Remove from connections map
     this.connections.delete(socketId);
+
+    // Emit offline status after removal
+    await this.eventService.emitUserStatusUpdate({ userId: wsConnection.userId, isOnline: false });
 
     // Clean up EntityManager
     if (wsConnection.entityManager) {
@@ -234,15 +204,11 @@ export class WebSocketConnectionManager {
     }
   }
 
-
-
-
   sendMessage(wsConnection: WebSocketConnection, message: any) {
     try {
       if (wsConnection.socket.readyState === 1) { // WebSocket.OPEN
         wsConnection.socket.send(JSON.stringify(message));
       } else {
-        console.warn('Socket is not open, buffering message');
         this.bufferMessage(wsConnection.userId, message);
         this.handleConnectionClose(wsConnection.socketId);
       }
@@ -253,27 +219,25 @@ export class WebSocketConnectionManager {
     }
   }
 
-  // Add message to buffer (public for external access)
+  // Add message to buffer
   bufferMessage(userId: string, message: any) {
     if (!this.messageBuffer.has(userId)) {
       this.messageBuffer.set(userId, []);
     }
     const buffer = this.messageBuffer.get(userId)!;
     buffer.push(message);
-    
-    // limit buffer size (maximum 1000 messages)
+
+    // Limit buffer size to 1000 messages
     if (buffer.length > 1000) {
       buffer.shift();
     }
   }
 
-  //when reconnected 
+  // Flush buffered messages on reconnect
   async flushBufferedMessages(userId: string): Promise<void> {
     const buffer = this.messageBuffer.get(userId);
     if (!buffer || buffer.length === 0) return;
 
-    console.log(`📮 Flushing ${buffer.length} buffered messages for user ${userId}`);
-    
     const connections = this.getUserConnections(userId);
     for (const connection of connections) {
       for (const message of buffer) {
@@ -289,7 +253,6 @@ export class WebSocketConnectionManager {
     this.messageBuffer.delete(userId);
   }
 
-  // Helper methods
   private closeConnection(socket: any, reason: string) {
     try {
       socket.close(1008, reason);
@@ -298,19 +261,15 @@ export class WebSocketConnectionManager {
     }
   }
 
-  // Getters
-  // get connection
   getConnection(socketId: string): WebSocketConnection | undefined {
     return this.connections.get(socketId);
   }
 
-  // get all connections
   getAllConnections(): WebSocketConnection[] {
     return Array.from(this.connections.values());
   }
 
-  // get all connections for a user
   getUserConnections(userId: string): WebSocketConnection[] {
     return Array.from(this.connections.values()).filter(conn => conn.userId === userId);
   }
-} 
+}

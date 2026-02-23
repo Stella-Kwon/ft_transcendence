@@ -10,6 +10,10 @@ const certExists = fs.existsSync("/etc/ssl/certs/cert.pem");
 export default defineConfig({
 	plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
 	preview: {
+		headers: 
+		{
+			"Cross-Origin-Opener-Policy": "unsafe-none",
+		},
 		open: false,
 		https: certExists && keyExists
 			?	{
@@ -23,6 +27,10 @@ export default defineConfig({
 	},
 	server: {
 		port: 5173,
-		open: true
+		open: true,
+		headers: 
+		{
+			"Cross-Origin-Opener-Policy": "unsafe-none",
+		},
 	}
 });

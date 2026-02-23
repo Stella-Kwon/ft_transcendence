@@ -37,7 +37,6 @@ export const FriendRequests = ({
   };
 
   const formatRequestTime = (timestamp: number) => {
-  const formatRequestTime = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -144,4 +143,4 @@ export const FriendRequests = ({
       ))}
     </div>
   );
-}; }
+};

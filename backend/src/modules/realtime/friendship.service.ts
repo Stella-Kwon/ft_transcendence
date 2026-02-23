@@ -75,61 +75,55 @@ export class FriendshipService {
       message: `${requester.name} sent you a friend request`,
       createdAt: Date.now()
     });
-    console.log('Friend request sent successfully');
   }
 
-//find friendship entity
-async CreateFriendship(em: EntityManager, userId: string, friendId: string): Promise<Friendship> {
+  async CreateFriendship(em: EntityManager, userId: string, friendId: string): Promise<Friendship> {
     if (userId === friendId) {
-        throw new BadRequestException('Cannot create friendship with yourself');
+      throw new BadRequestException('Cannot create friendship with yourself');
     }
 
     const friendship = await em.findOne(Friendship, {
-        user: {id: userId},
-        friend: {id: friendId},
-        status: 'active'
+      user: { id: userId },
+      friend: { id: friendId },
+      status: 'active'
     });
 
     if (!friendship) {
-        const user = await em.findOne(User, {id: userId});
-        const friend = await em.findOne(User, {id: friendId});
-        
-        if (!user || !friend) {
-            throw new NotFoundException('User or friend not found');
-        }
+      const user = await em.findOne(User, { id: userId });
+      const friend = await em.findOne(User, { id: friendId });
 
-        const newFriendship = em.create(Friendship, {
-            id: randomUUID(),
-            user: user,
-            friend: friend,
-            status: 'active',
-            createdAt: new Date()
-        });
-        await em.persistAndFlush(newFriendship);
-        return newFriendship;
-    } 
-    console.log('Friendship created successfully');
+      if (!user || !friend) {
+        throw new NotFoundException('User or friend not found');
+      }
+
+      const newFriendship = em.create(Friendship, {
+        id: randomUUID(),
+        user: user,
+        friend: friend,
+        status: 'active',
+        createdAt: new Date()
+      });
+      await em.persistAndFlush(newFriendship);
+      return newFriendship;
+    }
     return friendship;
-}
+  }
 
   // Accept friend request
   async acceptFriendRequest(em: EntityManager, requestId: string, addresseeId: string): Promise<void> {
-    const friendRequest = await em.findOne(FriendRequest, { 
+    const friendRequest = await em.findOne(FriendRequest, {
       id: requestId,
       addressee: { id: addresseeId },
       status: 'pending'
     }, { populate: ['requester', 'addressee'] });
-    
+
     if (!friendRequest) {
       throw new Error('Friend request not found or already processed');
     }
 
-    // Update friend request status
     friendRequest.status = 'accepted';
     friendRequest.acceptedAt = new Date();
 
-    // Create friendship relationship (bidirectional)
-    // 이미 존재하는 친구 관계인지 확인
     const existingFriendship1 = await em.findOne(Friendship, {
       user: { id: friendRequest.requester.id },
       friend: { id: friendRequest.addressee.id },
@@ -152,28 +146,26 @@ async CreateFriendship(em: EntityManager, userId: string, friendId: string): Pro
     await em.persistAndFlush([friendRequest, friendship1, friendship2]);
 
     this.eventService.emitFriendRequestResponse({
-        requestId: friendRequest.id,
-        requesterId: friendRequest.requester.id,
-        requesterName: friendRequest.requester.name,
-        addresseeId: friendRequest.addressee.id,
-        addresseeName: friendRequest.addressee.name,
-        status: 'accepted',
-        createdAt: friendRequest.createdAt.getTime()
+      requestId: friendRequest.id,
+      requesterId: friendRequest.requester.id,
+      requesterName: friendRequest.requester.name,
+      addresseeId: friendRequest.addressee.id,
+      addresseeName: friendRequest.addressee.name,
+      status: 'accepted',
+      createdAt: friendRequest.createdAt.getTime()
     });
 
-    // 친구 목록 업데이트 이벤트 발생
     this.eventService.emitUpdateFriendList({
       updateReason: 'friend_request_accepted',
-      friends: [], // 실제 데이터는 각 사용자별로 새로 조회
+      friends: [],
       totalCount: 0,
       targetUserIds: [friendRequest.requester.id, friendRequest.addressee.id]
     });
-    console.log('Friend request accepted successfully');
   }
 
   // Reject friend request
   async rejectFriendRequest(em: EntityManager, requestId: string, userId: string): Promise<void> {
-    const friendRequest = await em.findOne(FriendRequest, { 
+    const friendRequest = await em.findOne(FriendRequest, {
       id: requestId,
       addressee: { id: userId },
       status: 'pending'
@@ -184,19 +176,17 @@ async CreateFriendship(em: EntityManager, userId: string, friendId: string): Pro
     }
 
     friendRequest.status = 'rejected';
-    friendRequest.acceptedAt = new Date();
     await em.persistAndFlush(friendRequest);
 
     this.eventService.emitFriendRequestResponse({
-        requestId: friendRequest.id,
-        requesterId: friendRequest.requester.id,
-        requesterName: friendRequest.requester.name,
-        addresseeId: friendRequest.addressee.id,
-        addresseeName: friendRequest.addressee.name,
-        status: 'rejected',
-        createdAt: friendRequest.createdAt.getTime()
+      requestId: friendRequest.id,
+      requesterId: friendRequest.requester.id,
+      requesterName: friendRequest.requester.name,
+      addresseeId: friendRequest.addressee.id,
+      addresseeName: friendRequest.addressee.name,
+      status: 'rejected',
+      createdAt: friendRequest.createdAt.getTime()
     });
-    console.log('Friend request rejected successfully');
   }
 
   async blockFriend(em: EntityManager, userId: string, friendId: string): Promise<void> {
@@ -221,14 +211,12 @@ async CreateFriendship(em: EntityManager, userId: string, friendId: string): Pro
 
     await em.persistAndFlush([friendship1, friendship2]);
 
-    // 🎯 친구 목록 업데이트 이벤트 발생 (영향받는 사용자들에게만)
     this.eventService.emitUpdateFriendList({
       updateReason: 'friend_blocked',
-      friends: [], // 실제 데이터는 각 사용자별로 새로 조회
+      friends: [],
       totalCount: 0,
-      targetUserIds: [userId, friendId] // 영향받는 사용자들만 지정
+      targetUserIds: [userId, friendId]
     });
-    console.log('Friend blocked successfully');
   }
 
   async unblockFriend(em: EntityManager, userId: string, friendId: string): Promise<void> {
@@ -253,24 +241,21 @@ async CreateFriendship(em: EntityManager, userId: string, friendId: string): Pro
 
     await em.persistAndFlush([friendship1, friendship2]);
 
-    // 🎯 친구 목록 업데이트 이벤트 발생 (영향받는 사용자들에게만)
     this.eventService.emitUpdateFriendList({
       updateReason: 'friend_unblocked',
-      friends: [], // 실제 데이터는 각 사용자별로 새로 조회
+      friends: [],
       totalCount: 0,
-      targetUserIds: [userId, friendId] // 영향받는 사용자들만 지정
+      targetUserIds: [userId, friendId]
     });
-    console.log('Friend unblocked successfully');
   }
 
-  // Get pending friend requests for a user  
+  // Get pending friend requests for a user
   async getPendingRequests(em: EntityManager, userId: string): Promise<FriendPendingRequestPayloadSchema[]> {
     const friendRequests = await em.find(FriendRequest, {
       addressee: { id: userId },
       status: 'pending'
     }, { populate: ['requester', 'addressee'] });
 
-    // 단순한 친구 요청 배열 반환
     return friendRequests.map(request => ({
       id: request.id,
       requesterName: request.requester.name,
@@ -279,77 +264,75 @@ async CreateFriendship(em: EntityManager, userId: string, friendId: string): Pro
       status: request.status,
       createdAt: request.createdAt.getTime()
     }));
-    console.log('Pending friend requests fetched successfully');
   }
 
-  // Get user's friends list with online status (blocked 친구는 제외)
+  // Get user's friends list with online status
   async getFriendsList(em: EntityManager, userId: string, updateReason?: 'friend_request_accepted' | 'friend_blocked' | 'friend_unblocked' | 'friend_removed'): Promise<FriendListResponseSchema> {
     const friendships = await em.find(Friendship, {
       user: { id: userId },
-      status: 'active'  // active인 친구만 조회
+      status: 'active'
     }, { populate: ['friend'] });
 
-          const friendslist = friendships.map(friendship => {
-        const friend = friendship.friend;
-        const isOnline = this.connectionService.isUserOnline(friend.id);
-        const userConnection = this.connectionService.getConnectionByUserId(friend.id);
-        
-        return {
-          id: friend.id,
-          name: friend.name,
-          email: friend.email,
-          avatarUrl: friend.avatarUrl || '',
-          isOnline,
-          lastSeen: userConnection ? (typeof userConnection.connectedAt === 'number' ? userConnection.connectedAt : Date.now()) : Date.now()
-        };
-      });
-      const friendsList: FriendListResponseSchema = {
-        id: randomUUID(),
-        timestamp: Date.now(),
-        version: '1.0',
-        type: 'friend_list',
-        payload: {
-          friends: friendslist,
-          totalCount: friendslist.length,
-          updateReason: updateReason
-        }
-      };
-      console.log('Friends list fetched successfully');
-    return friendsList;
-  }
-
-  // 🎯 블록된 친구 목록 조회
-  async getBlockedFriendsList(em: EntityManager, userId: string, updateReason?: 'friend_request_accepted' | 'friend_blocked' | 'friend_unblocked' | 'friend_removed'): Promise<FriendListResponseSchema> {
-    const blockedFriendships = await em.find(Friendship, {
-      user: { id: userId },
-      status: 'blocked'  // blocked인 친구만 조회
-    }, { populate: ['friend'] });
-    
-    const blockedFriendslist = blockedFriendships.map(friendship => {
+    const friendslist = friendships.map(friendship => {
       const friend = friendship.friend;
-      
+      const isOnline = this.connectionService.isUserOnline(friend.id);
+      const userConnection = this.connectionService.getConnectionByUserId(friend.id);
+
       return {
         id: friend.id,
         name: friend.name,
         email: friend.email,
         avatarUrl: friend.avatarUrl || '',
-        isOnline: false,  // 블록된 친구는 온라인 상태 표시 안함
-        lastSeen: Date.now()  // 블록된 친구는 현재 시간으로 설정
+        isOnline,
+        lastSeen: userConnection ? new Date(userConnection.connectedAt).getTime() : Date.now()
       };
     });
 
-          const blockedFriendsList: FriendListResponseSchema = {
-        id: randomUUID(),
-        timestamp: Date.now(),
-        version: '1.0',
-        type: 'friend_list',
-        payload: {
-          friends: blockedFriendslist,
-          totalCount: blockedFriendslist.length,
-          updateReason: updateReason
-        }
+    const friendsList: FriendListResponseSchema = {
+      id: randomUUID(),
+      timestamp: Date.now(),
+      version: '1.0',
+      type: 'friend_list',
+      payload: {
+        friends: friendslist,
+        totalCount: friendslist.length,
+        updateReason: updateReason
+      }
+    };
+    return friendsList;
+  }
+
+  // Get blocked friends list
+  async getBlockedFriendsList(em: EntityManager, userId: string, updateReason?: 'friend_request_accepted' | 'friend_blocked' | 'friend_unblocked' | 'friend_removed'): Promise<FriendListResponseSchema> {
+    const blockedFriendships = await em.find(Friendship, {
+      user: { id: userId },
+      status: 'blocked'
+    }, { populate: ['friend'] });
+
+    const blockedFriendslist = blockedFriendships.map(friendship => {
+      const friend = friendship.friend;
+
+      return {
+        id: friend.id,
+        name: friend.name,
+        email: friend.email,
+        avatarUrl: friend.avatarUrl || '',
+        isOnline: false,
+        lastSeen: Date.now()
       };
-      console.log('Blocked friends list fetched successfully');
+    });
+
+    const blockedFriendsList: FriendListResponseSchema = {
+      id: randomUUID(),
+      timestamp: Date.now(),
+      version: '1.0',
+      type: 'friend_list',
+      payload: {
+        friends: blockedFriendslist,
+        totalCount: blockedFriendslist.length,
+        updateReason: updateReason
+      }
+    };
     return blockedFriendsList;
   }
 
@@ -367,7 +350,6 @@ async CreateFriendship(em: EntityManager, userId: string, friendId: string): Pro
       throw new Error('Friendship not found');
     }
 
-    // Remove both friendship records
     await em.removeAndFlush(friendships);
 
     // Also remove any friend requests between these users
@@ -382,14 +364,12 @@ async CreateFriendship(em: EntityManager, userId: string, friendId: string): Pro
       await em.removeAndFlush(friendRequests);
     }
 
-    // 🎯 친구 목록 업데이트 이벤트 발생 (영향받는 사용자들에게만)
     this.eventService.emitUpdateFriendList({
       updateReason: 'friend_removed',
-      friends: [], // 실제 데이터는 각 사용자별로 새로 조회
+      friends: [],
       totalCount: 0,
-      targetUserIds: [userId, friendId] // 영향받는 사용자들만 지정
+      targetUserIds: [userId, friendId]
     });
-    console.log('Friend removed successfully');
   }
 
   // Get friend request by email
@@ -411,7 +391,8 @@ async CreateFriendship(em: EntityManager, userId: string, friendId: string): Pro
 
     return friendRequest;
   }
-  // 친구 userId 배열 반환 (online/offline 브로드캐스트용)
+
+  // Get friend IDs for online/offline broadcast
   async getFriendIds(em: EntityManager, userId: string): Promise<string[]> {
     const friendships = await em.find(Friendship, {
       user: { id: userId },

@@ -4,6 +4,10 @@ RUN apk add --no-cache openssl
 
 WORKDIR /transcendence
 
+# Default API URL for build (use http so Chrome works without cert; override via build-arg if needed)
+ARG VITE_API_BASE_URL=http://localhost:3000
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 COPY package*.json ./
 
 RUN npm install

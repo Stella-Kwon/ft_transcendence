@@ -15,8 +15,6 @@ export class ConnectionService {
   constructor() {}
 
   createConnection(connectionId: string, socketId: string, email: string, userId: string, name: string): UserConnection {
-    const wasUserOffline = !this.isUserOnline(userId);
-
     const connection: UserConnection = {
       connectionId,
       socketId,
@@ -33,37 +31,32 @@ export class ConnectionService {
     }
     this.userConnections.get(userId)!.add(connectionId);
 
-    if (wasUserOffline) {
-      console.log(`📢 User ${name} (${userId}) went ONLINE`);
-    }
-
-    console.log(`Connection created: ${connectionId} for user ${userId}`);
     return connection;
   }
 
-
   getConnectionByUserId(userId: string): UserConnection | undefined {
-    return this.connections.get(userId);
+    const connectionIds = this.userConnections.get(userId);
+    if (!connectionIds || connectionIds.size === 0) return undefined;
+    const firstConnectionId = connectionIds.values().next().value;
+    return this.connections.get(firstConnectionId);
   }
 
-// Get all connections for a user
+  // Get all connections for a user
   getUserConnections(userId: string): UserConnection[] {
     const connectionIds = this.userConnections.get(userId);
-    if (!connectionIds) return []; //just check if (connections.lengh === 0); 
+    if (!connectionIds) return [];
 
     return Array.from(connectionIds)
-      .map(id => this.connections.get(id)) //bring all userconnections
+      .map(id => this.connections.get(id))
       .filter((conn): conn is UserConnection => conn !== undefined);
   }
 
   removeConnection(connectionId: string): boolean {
     const connection = this.connections.get(connectionId);
     if (!connection) {
-      console.warn(`Connection ${connectionId} not found for removal`);
       return false;
     }
     const userId = connection.userId;
-    const userName = connection.name;
     this.connections.delete(connectionId);
 
     const userConnections = this.userConnections.get(userId);
@@ -72,13 +65,9 @@ export class ConnectionService {
 
       if (userConnections.size === 0) {
         this.userConnections.delete(userId);
-        
-        console.log(`📢 User ${userName} (${userId}) went OFFLINE`);
-        
       }
     }
 
-    console.log(`Connection removed: ${connectionId} for user ${userId}`);
     return true;
   }
 
@@ -87,10 +76,10 @@ export class ConnectionService {
     return Array.from(this.connections.values());
   }
 
-  // Get all online users (online users only)
+  // Get all online users (unique per userId)
   getOnlineUsers(): UserConnection[] {
     const onlineUsers = new Map<string, UserConnection>();
-    
+
     for (const connection of this.connections.values()) {
       if (!onlineUsers.has(connection.userId)) {
         onlineUsers.set(connection.userId, connection);
@@ -98,9 +87,10 @@ export class ConnectionService {
     }
     return Array.from(onlineUsers.values());
   }
+
   // Check if user is online
   isUserOnline(userId: string): boolean {
     const userConnections = this.userConnections.get(userId);
     return userConnections ? userConnections.size > 0 : false;
   }
-} 
+}
