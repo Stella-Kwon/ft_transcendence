@@ -18,21 +18,26 @@
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │  Frontend (React + Vite)                                         │
 │  • SPA with React Router  • Babylon.js game loop  • Zustand      │
-│  • WebSocket client (chat, presence)  • REST (auth, users, stats) │
-└───────────────────────────────┬─────────────────────────────────┘
+│  • WebSocket client (chat, presence)  • REST (auth, users, stats)│
+└───────────────────────────────┬──────────────────────────────────┘
                                 │ HTTP / WebSocket
-┌───────────────────────────────▼─────────────────────────────────┐
+┌───────────────────────────────▼──────────────────────────────────┐
 │  Backend (Fastify)                                               │
 │  • REST API (auth, users, stats, tournaments, media)             │
-│  • WebSocket server (realtime: chat, rooms, presence, room sync)  │
+│  • WebSocket server (realtime: chat, rooms, presence, room sync) │
 │  • MikroORM + SQLite  • TypeBox schemas  • Modular structure     │
-└─────────────────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-Backend is organized by domain: **auth**, **user**, **realtime** (chat, rooms, presence), **tournament**, **stats**, **gameHistory**, **media**, with shared **database** and **config**.
+Backend code is split into modules by feature: 
+**auth** (login, 2FA)
+**user** (profile)
+**realtime** (chat, rooms, presence)
+**tournament**, **stats**, **gameHistory**, **media**. 
+Shared **database** and **config** are used across them.
 
 ---
 
