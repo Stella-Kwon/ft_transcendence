@@ -7,3 +7,6 @@ sqlite.db
 *.txt
 .DS_Store
 /vscode/
+.env
+.env.local
+.env.*.local
