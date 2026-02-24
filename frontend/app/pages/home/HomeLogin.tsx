@@ -32,11 +32,12 @@ export function HomeLogin() {
 
 					<div className="flex flex-grow justify-center items-center mx-8 mt-4 border-t border-black">
 						<GoogleLoginButton
-							clientId={`${import.meta.env.VITE_GOOGLE_CLIENT_ID}`}
-							onSuccess={async (credential: string) => {
+							clientId={`${import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ""}`}
+							onLogin={async (credential: string) => {
 								try {
 									const user = await loginWithGoogle(credential);
 									console.log("onSuccess after loginWithGoogle:", user);
+									setUser(user ?? null);
 									navigate("/play");
 								} catch (error) {
 									alert((error as Error).message);

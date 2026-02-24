@@ -10,6 +10,7 @@
 		"build": "tsc -p tsconfig.json",
 		"start": "node dist/src/main.js",
 		"dev": "node --env-file .env --watch -r ts-node/register src/main.ts",
+		"gencert": "mkdir -p certs && openssl req -x509 -newkey rsa:2048 -nodes -days 365 -keyout certs/key.pem -out certs/cert.pem -subj /CN=localhost",
 		"migration:create": "mikro-orm migration:create",
 		"migration:up": "mikro-orm migration:up",
 		"migration:down": "mikro-orm migration:down",

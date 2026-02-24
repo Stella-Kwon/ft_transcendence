@@ -3,6 +3,7 @@ dist/
 temp/
 migrations/
 uploads/
+certs/
 sqlite.db
 *.txt
 .DS_Store

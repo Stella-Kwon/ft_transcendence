@@ -37,7 +37,6 @@ const loadGIS = (config: GisConfig): void => {
 	script.defer = true;
 
 	script.onload = () => {
-		console.log("✅ Successfully loaded Google GIS script.");
 		initializeGIS({ clientId, parent, onLogin });
 	};
 

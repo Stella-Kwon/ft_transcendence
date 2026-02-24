@@ -1,7 +1,7 @@
 import { fetchJson } from '../client';
 import type { CreateTournamentDto, JoinTournamentDto, TournamentResponse, TournamentsResponse, RecordTournamentResultsDto } from './types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:3000/api';
 
 // //25.7
 // export async function createTournament(tournamentData: CreateTournamentDto): Promise<TournamentResponse | null> {

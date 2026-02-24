@@ -23,20 +23,20 @@
 │  • SPA with React Router  • Babylon.js game loop  • Zustand      │
 │  • WebSocket client (chat, presence)  • REST (auth, users, stats)│
 └───────────────────────────────┬──────────────────────────────────┘
-                                │ HTTP / WebSocket
+                                │ HTTPS / WSS
 ┌───────────────────────────────▼──────────────────────────────────┐
 │  Backend (Fastify)                                               │
-│  • REST API (auth, users, stats, tournaments, media)             │
-│  • WebSocket server (realtime: chat, rooms, presence, room sync) │
+│  • REST API (auth, users, stats, tournaments, media)                 │
+│  • WebSocket server (realtime: chat, rooms, presence, friends, sync) │
 │  • MikroORM + SQLite  • TypeBox schemas  • Modular structure     │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-Backend code is split into modules by feature: 
+Backend code is split into modules by feature:
 **auth** (login, 2FA)
 **user** (profile)
-**realtime** (chat, rooms, presence)
-**tournament**, **stats**, **gameHistory**, **media**. 
+**realtime** (chat, rooms, presence, friends)
+**tournament**, **stats**, **gameHistory**, **media**.
 Shared **database** and **config** are used across them.
 
 ---
@@ -55,54 +55,38 @@ Shared **database** and **config** are used across them.
 
 ## Quick start
 
-**Prerequisites:** Node.js LTS, npm (or pnpm).
-
-```bash
-git clone <repo-url>
-cd <repo-dir>
-npm install --prefix backend && npm install --prefix frontend
-```
+**Prerequisites:** Docker, Docker Compose.
 
 **1. Environment**
 
 Copy each `.env.example` to `.env` (do not commit `.env`), then set the values:
 
 ```bash
-# Backend: .env.example → .env
 cp backend/.env.example backend/.env
-# Set: COOKIE_SECRET, JWT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+# Set: COOKIE_SECRET, JWT_SECRET, GOOGLE_CLIENT_ID
 
-# Frontend: .env.example → .env
 cp frontend/.env.example frontend/.env
-# Set: VITE_API_BASE_URL=http://localhost:3000, VITE_GOOGLE_CLIENT_ID
+# Set: VITE_API_BASE_URL=https://localhost:3000, VITE_GOOGLE_CLIENT_ID
 ```
 
-Create an OAuth 2.0 Web client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials); use Client ID in both apps, Client Secret only in the backend.
+Create an OAuth 2.0 Web client in [Google Cloud Console](https://console.cloud.google.com/apis/credentials); use the **Client ID** in both backend and frontend. Add `https://localhost:5173` as an authorized JavaScript origin.
 
-**2a. Run locally (no Docker)**
+**2. Run with Docker**
 
 ```bash
-# Database (only when not using Docker)
-cd backend && npm run migration:up && cd ..
-
-# Terminal 1 – backend
-cd backend && npm run dev
-
-# Terminal 2 – frontend
-cd frontend && npm run dev
+make up
 ```
 
-Open the URL from the frontend dev server (e.g. `http://localhost:5173`).
+- Backend: `https://localhost:3000`
+- Frontend: `https://localhost:5173`
 
-**2b. Run with Docker**
+SSL certificates are generated automatically on first run. The browser will show a self-signed certificate warning — accept it once for both ports.
 
-Backend container runs migrations on startup. Ensure both `backend/.env` and `frontend/.env` exist, then:
+To stop:
 
 ```bash
-docker-compose up --build
+make down
 ```
-
-Backend: `https://localhost:3000` · Frontend: `http://localhost:5173`
 
 ---
 
@@ -115,7 +99,7 @@ backend/
     modules/          # Domain modules
       auth/           # Login, register, JWT, 2FA, Google
       user/           # Profile, CRUD
-      realtime/       # WebSocket: chat, rooms, presence, sync
+      realtime/       # WebSocket: chat, rooms, presence, friends, sync
       tournament/     # Brackets, matches
       stats/          # Ratings, leaderboard
       gameHistory/    # Match records

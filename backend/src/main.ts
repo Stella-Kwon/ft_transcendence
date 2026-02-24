@@ -1,17 +1,26 @@
 import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 import { createApp } from "./app";
 import { ServerOptions } from "https";
 
-const start = async (): Promise<void> => {
-	const keyExists = existsSync("/etc/ssl/certs/key.pem");
-	const certExists = existsSync("/etc/ssl/certs/cert.pem");
+const certDirs = ["/etc/ssl/certs", join(process.cwd(), "certs")];
 
-	const httpsOptions: ServerOptions | null = (keyExists && certExists)
-		?	{
-				key: readFileSync("/etc/ssl/certs/key.pem"),
-				cert: readFileSync("/etc/ssl/certs/cert.pem")
-			}
-		:	null;
+const findCerts = (): ServerOptions => {
+	for (const dir of certDirs) {
+		const keyPath = join(dir, "key.pem");
+		const certPath = join(dir, "cert.pem");
+		if (existsSync(keyPath) && existsSync(certPath)) {
+			return {
+				key: readFileSync(keyPath),
+				cert: readFileSync(certPath),
+			};
+		}
+	}
+	throw new Error("SSL certificates not found. Run with Docker or place certs in ./certs/");
+};
+
+const start = async (): Promise<void> => {
+	const httpsOptions: ServerOptions = findCerts();
 
 	try {
 		const app = await createApp({

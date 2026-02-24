@@ -38,6 +38,7 @@ export class ConnectionService {
     const connectionIds = this.userConnections.get(userId);
     if (!connectionIds || connectionIds.size === 0) return undefined;
     const firstConnectionId = connectionIds.values().next().value;
+    if (firstConnectionId === undefined) return undefined;
     return this.connections.get(firstConnectionId);
   }
 

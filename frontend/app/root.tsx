@@ -30,6 +30,7 @@ export async function clientLoader(): Promise<void> {
 			});
 		}
 	} catch (error) {
+		useAuth.setState({ user: null });
 		toast.error((error as Error).message);
 	}
 }

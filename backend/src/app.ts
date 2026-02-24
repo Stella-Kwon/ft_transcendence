@@ -1,4 +1,4 @@
-import Fastify, { FastifyHttpsOptions, type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance } from "fastify";
 import fastifyCORS from "@fastify/cors";
 import fastifyCookie from "@fastify/cookie";
 import fastifyJWT from "@fastify/jwt";
@@ -20,15 +20,14 @@ import { tournamentGameModule } from "./modules/tournament/tournament.module";
 import { statsModule } from "./modules/stats/stats.module";
 import { getErrorResponseDto } from "./common/utils/getErrorResponseDto";
 import { appModule } from "./app.module";
-import { Server } from "https";
+import type { ServerOptions } from "https";
 
 declare module "fastify" {
 	interface FastifyInstance {
-		cryptoService: CryptoService,
+		cryptoService: CryptoService;
 	}
-
 	interface FastifyRequest {
-		jwtTokenExpiredError: unknown
+		jwtTokenExpiredError: unknown;
 	}
 }
 
@@ -38,6 +37,33 @@ declare module "@fastify/jwt" {
 		user: UserResponseDto;
 	}
 }
+
+type CreateAppOpts = {
+	https: ServerOptions;
+	logger?: unknown;
+	pluginTimeout?: number;
+};
+
+export const createApp = async (opts: CreateAppOpts): Promise<FastifyInstance> => {
+	const app = Fastify({
+		https: opts.https,
+		logger: opts.logger ?? true,
+		pluginTimeout: opts.pluginTimeout ?? 10000,
+	}).withTypeProvider<TypeBoxTypeProvider>();
+
+	app.setErrorHandler((error, request, reply) => {
+		request.log.error(error);
+		const errorResponse = getErrorResponseDto(error);
+		return reply.code(errorResponse.statusCode).send(errorResponse);
+	});
+
+	await installFastifyPlugins(app);
+	await decorateGlobal(app);
+	await installPlugins(app);
+	await registerHooks(app);
+
+	return app;
+};
 
 const installFastifyPlugins = async (app: FastifyInstance): Promise<void> => {
 	await app.register(fastifyCORS, {
@@ -111,24 +137,4 @@ const registerHooks = async (app: FastifyInstance): Promise<void> => {
 			}
 		}
 	});
-}
-
-export const createApp = async (opts: FastifyHttpsOptions<Server>): Promise<FastifyInstance> => {
-	const app = Fastify(opts).withTypeProvider<TypeBoxTypeProvider>();
-
-	app.setErrorHandler((error, request, reply) => {
-		request.log.error(error);
-		const errorResponse = getErrorResponseDto(error);
-
-		return reply
-			.code(errorResponse.statusCode)
-			.send(errorResponse);
-	});
-
-	await installFastifyPlugins(app);
-	await decorateGlobal(app);
-	await installPlugins(app);
-	await registerHooks(app);
-
-	return app;
 }
