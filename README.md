@@ -129,27 +129,6 @@ I was responsible for the entire **real-time module** — WebSocket server, chat
 
 ---
 
-## Testing
-
-All tests live in `backend/testing_realtime/`. The server must be running (`make up`) before running them.
-
-```bash
-node backend/testing_realtime/test_room.js        # Room HTTP API
-node backend/testing_realtime/test_friendship.js  # Friendship HTTP API
-node backend/testing_realtime/websocket_test.js   # WebSocket functional tests
-node backend/testing_realtime/test_load.js        # Load & stress tests
-```
-
-**`test_room.js`** — Room CRUD, join/leave/invite, room list with unread counts, member list, auth checks (401/403/404)
-
-**`test_friendship.js`** — 4-user scenario: send requests, accept/reject, friends list, block/unblock, remove, error cases (duplicate, self-request, non-existent user)
-
-**`websocket_test.js`** — WebSocket connect with cookie auth, ping/pong, room sync (`room_state`), chat broadcast, mark read, error handling, connection persistence
-
-**`test_load.js`** — 10 parallel room creations, 50-message WebSocket burst, 10 rapid pings, 5 concurrent connections, 50 sequential HTTP requests, **1000 concurrent WebSocket connections**
-
----
-
 ## License
 
 MIT — Copyright (c) 2025 Hoang Tran, Alice Li Maunumäki, Timo Saari, Joseph Lu, Stella-Kwon.
