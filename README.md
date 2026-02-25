@@ -117,6 +117,18 @@ frontend/
 
 ---
 
+## My Contributions
+
+I was responsible for the entire **real-time module** — WebSocket server, chat, presence, and friend system.
+
+- **WebSocket server** — cookie-based JWT auth on connect, ping/pong to detect dead connections, message buffer for offline users, automatic session restore on reconnect
+- **Chat** — messages saved to DB, per-user unread count tracking per room, room membership checked against DB on every message
+- **Friend system** — send/accept/reject requests, block/unblock, online status broadcast to friends in real time
+- **Data model** — designed all realtime entities: Room, RoomMember, ChatMessage, Friendship, FriendRequest, UserReadMessage
+- **Architecture** — services communicate via internal events (Node.js EventEmitter) to keep layers decoupled
+
+---
+
 ## Testing
 
 All tests live in `backend/testing_realtime/`. The server must be running (`make up`) before running them.
