@@ -24,12 +24,12 @@
 │  • WebSocket client (chat, presence)  • REST (auth, users, stats)│
 └───────────────────────────────┬──────────────────────────────────┘
                                 │ HTTPS / WSS
-┌───────────────────────────────▼──────────────────────────────────┐
-│  Backend (Fastify)                                               │
+┌───────────────────────────────▼──────────────────────────────────────┐
+│  Backend (Fastify)                                                   │
 │  • REST API (auth, users, stats, tournaments, media)                 │
 │  • WebSocket server (realtime: chat, rooms, presence, friends, sync) │
-│  • MikroORM + SQLite  • TypeBox schemas  • Modular structure     │
-└──────────────────────────────────────────────────────────────────┘
+│  • MikroORM + SQLite  • TypeBox schemas  • Modular structure         │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 Backend code is split into modules by feature:
