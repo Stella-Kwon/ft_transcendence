@@ -34,9 +34,14 @@ export class EventListenerService {
           type: 'user_status',
           payload: { userId, isOnline }
         };
-        for (const friendId of friends) {
-          await sendToUser(friendId, message);
-        }
+        const results = await Promise.allSettled(
+          friends.map(friendId => sendToUser(friendId, message))
+        );
+        results.forEach((result, i) => {
+          if (result.status === 'rejected') {
+            console.error(`Error sending status update to friend ${friends[i]}:`, result.reason);
+          }
+        });
       } catch (error) {
         console.error('Error broadcasting user status update:', error);
       }
@@ -238,8 +243,10 @@ export class EventListenerService {
     updateReason: 'friend_request_accepted' | 'friend_blocked' | 'friend_unblocked' | 'friend_removed',
     sendToUser: (userId: string, message: any) => Promise<void>
   ): Promise<void> {
-    for (const userId of userIds) {
-      if (this.connectionService.isUserOnline(userId)) {
+    const onlineUsers = userIds.filter(userId => this.connectionService.isUserOnline(userId));
+
+    await Promise.allSettled(
+      onlineUsers.map(async (userId) => {
         try {
           const em = this.orm.em.fork();
           const updatedFriendList = await this.friendshipService.getFriendsList(
@@ -247,11 +254,9 @@ export class EventListenerService {
             userId,
             updateReason
           );
-
           await sendToUser(userId, updatedFriendList);
         } catch (userError) {
           console.error(`Error sending friend list to user ${userId}:`, userError);
-
           try {
             const errorMessage = WebSocketErrorHandler.createErrorMessage(
               'FRIEND_LIST_UPDATE_ERROR',
@@ -263,7 +268,7 @@ export class EventListenerService {
             console.error(`Failed to send error notification to user ${userId}:`, notificationError);
           }
         }
-      }
-    }
+      })
+    );
   }
 }

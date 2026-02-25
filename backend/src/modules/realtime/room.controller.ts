@@ -22,7 +22,6 @@ import { InternalServerErrorException } from "../../common/exceptions/InternalSe
 import { SyncService } from './sync.service';
 import { EventService } from './event.service';
 
-// Type declaration for decorated properties (decoration is only for runtime check)
 declare module 'fastify' {
   interface FastifyInstance {
     syncService: SyncService;
@@ -135,18 +134,15 @@ export const roomController: FastifyPluginAsync = async (fastify, opts) => {
 
     const { roomId } = request.params as { roomId: string };
     const em = request.entityManager.fork();
-    
-    // Check if user is a member of this room (database only)
+
     const isInRoom = await fastify.roomService.isUserInRoomDatabase(em, roomId, userId);
     if (!isInRoom) {
-      // User is not a member of this room
       throw new ForbiddenException("You are not a member of this room. Please request an invitation first.");
     }
 
     // Sync room messages
     const roomData = await fastify.syncService.syncRoomMessages(em, userId, roomId);
     
-    // Get room info for response
     const room = await fastify.roomService.getRoom(em, roomId);
     if (!room) {
       throw new NotFoundException("Room not found");
@@ -171,6 +167,7 @@ export const roomController: FastifyPluginAsync = async (fastify, opts) => {
     });
   });
 
+//get a roomlist
 fastify.get("/rooms/:userId/roomlist", {
     schema: {
       params: Type.Object({
@@ -184,7 +181,6 @@ fastify.get("/rooms/:userId/roomlist", {
               unreadCount: Type.Number()
             })
           ])),
-          onlineMembers: Type.Number()
         }),
         404: ErrorResponseDtoSchema
       }
@@ -198,28 +194,16 @@ fastify.get("/rooms/:userId/roomlist", {
       if (!currentUserId) {
         throw new UnauthorizedException("Authentication required");
       }
-      
-      // 🔒 보안: 사용자는 자신의 룸 목록만 볼 수 있음
       if (currentUserId !== userId) {
         throw new ForbiddenException("Access denied: You can only view your own room list");
       }
-      
-      // 데이터베이스에서 사용자의 방 목록 조회 (메모리는 WebSocket 연결 시에만 사용)
       const dbRooms = await fastify.roomService.getUserRooms(em, userId);
       const rooms = dbRooms.map(room => room.id);
-      
-      // Transform rooms to match roomCreatedPayloadSchema format with unreadCount
       const roomList = await Promise.all(rooms.map(async (roomId: string) => {
-        // 룸 정보는 데이터베이스에서 조회 (메모리에는 ID만 있음)
         const room = await fastify.roomService.getRoom(em, roomId);
         if (!room) return null;
-        
-        // 데이터베이스에서 멤버 수 확인 (정확한 멤버 수)
         const memberCount = room.members?.length || 0;
-        
-        // Get unread count for each room
         const unreadCount = await fastify.syncService.getUnreadMessageCount(em, userId, roomId);
-        
         return {
           id: room.id,
           name: room.name,
@@ -234,14 +218,11 @@ fastify.get("/rooms/:userId/roomlist", {
         };
       }));
       
-      // null 값 필터링
       const validRoomList = roomList.filter(room => room !== null);
       
-      const onlineMembers = validRoomList.map((room: any) => fastify.connectionService.isUserOnline(room.masterId));
       return reply.send({
-      roomList: validRoomList,
-      onlineMembers: onlineMembers.length
-    });
+        roomList: validRoomList
+      });
   } catch (error: any) {
     if (error.statusCode) {
       throw error;
@@ -251,10 +232,8 @@ fastify.get("/rooms/:userId/roomlist", {
   }
 });
 
-
-
-  //룸에 친구 초대 (HTTP API)
-  fastify.post("/rooms/:roomId/invite", {
+//invite to the room
+fastify.post("/rooms/:roomId/invite", {
     schema: {
       params: Type.Object({
         roomId: Type.String()
@@ -287,7 +266,6 @@ fastify.get("/rooms/:userId/roomlist", {
     }
 
     try {
-      //다중 초대 처리
       const results = await fastify.roomService.addUsersToRoomDatabase(
         request.entityManager,
         roomId,
@@ -308,7 +286,6 @@ fastify.get("/rooms/:userId/roomlist", {
          }
        }
 
-      // 부분적 성공 또는 전체 성공 → 200 OK
       return reply.send({
         success: results.success,
         failed: results.failed,
@@ -316,7 +293,6 @@ fastify.get("/rooms/:userId/roomlist", {
       });
 
     } catch (error: any) {
-      //이미 HTTP 에러라면 그대로 throw
       if (error.statusCode) {
         throw error;
       }
@@ -330,7 +306,7 @@ fastify.get("/rooms/:userId/roomlist", {
     }
   });
 
-  // 룸 나가기 (HTTP API)
+  //leave room
   fastify.post("/rooms/:roomId/leave", {
     schema: {
       params: Type.Object({
@@ -372,11 +348,9 @@ fastify.get("/rooms/:userId/roomlist", {
         message: `${userName} successfully left the room`
       });
     } catch (error: any) {
-      // 이미 적절한 exception이 throw되므로 그대로 전달
       if (error.statusCode) {
         throw error;
       }
-      // 예상치 못한 에러만 일반적 에러로 처리
       console.error('Unexpected error in leave room:', error);
       throw new NotFoundException(`Failed to leave room: ${error.message}`);
     }

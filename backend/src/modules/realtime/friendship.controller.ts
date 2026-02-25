@@ -142,7 +142,6 @@ export const friendshipController: FastifyPluginAsync = async (fastify) => {
     try {
     const currentUserId = await loginCheck(request);
     const { requestId } = request.params as { requestId: string };
-    const { requestName } = (request.user as any)?.name;
 
     await fastify.friendshipService.rejectFriendRequest(
       request.entityManager,

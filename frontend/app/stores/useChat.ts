@@ -122,7 +122,7 @@ export const useChat = (): UseChatState & UseChatActions => {
         
         // handle auto-marking message as read when you are in the current room and not the own message
         const isCurrentRoom = message.payload.roomId && message.payload.roomId === prev.currentRoomId;
-        const isOwnMessage = user && message.payload.userId === user.id;
+        const isOwnMessage = message.payload.userId === useAuth.getState().user?.id;
         
         if (isCurrentRoom && !isOwnMessage) {
           // console.log(`📖 Auto-marking message as read (current room): ${message.id}`);
@@ -322,9 +322,8 @@ export const useChat = (): UseChatState & UseChatActions => {
       websocketService.connect(handlersRef.current);
     }
 
-    // Cleanup function - need to keep event handlers for other components (when you switch to another chat page)
     return () => {
-      // console.log('🔗 useChat: Component unmounting, but keeping event handlers for other components');
+      websocketService.addEventHandlers({});
     };
   }, [user]);
 

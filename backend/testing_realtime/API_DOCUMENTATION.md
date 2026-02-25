@@ -37,8 +37,8 @@ Create a new chat room.
   "isPrivate": false,
   "maxUsers": 50,
   "memberCount": 1,
-  "createdAt": 1234567890,
-  "updatedAt": 1234567890
+  "createdAt": 1708876800000, => gettime() 13numbers
+  "updatedAt": 1708876800000
 }
 ```
 
@@ -57,8 +57,8 @@ Get details of a specific room.
   "isPrivate": false,
   "maxUsers": 50,
   "memberCount": 5,
-  "createdAt": 1234567890,
-  "updatedAt": 1234567890
+  "createdAt": 1708876800000,
+  "updatedAt": 1708876800000
 }
 ```
 
@@ -79,11 +79,11 @@ Get all rooms that a user has joined.
       "isPrivate": false,
       "maxUsers": 50,
       "memberCount": 5,
-      "createdAt": 1234567890,
-      "updatedAt": 1234567890
+      "unreadCount": 3,
+      "createdAt": 1708876800000,
+      "updatedAt": 1708876800000
     }
-  ],
-  "onlineMembers": 3
+  ]
 }
 ```
 
@@ -137,7 +137,7 @@ Get all members of a room.
   {
     "userId": "user-uuid",
     "name": "John Doe",
-    "joinedAt": "2023-01-01T00:00:00.000Z",
+    "joinedAt": 1708876800000,
     "isOnline": true
   }
 ]
@@ -202,7 +202,7 @@ Get all pending friend requests for the current user.
     "addresseeId": "user-uuid",
     "addresseeName": "Jane Doe",
     "status": "pending",
-    "createdAt": 1234567890
+    "createdAt": 1708876800000
   }
 ]
 ```
@@ -216,7 +216,7 @@ Get all friends of the current user.
 ```json
 {
   "id": "response-uuid",
-  "timestamp": 1234567890,
+  "timestamp": 1708876800000,
   "version": "1.0",
   "type": "friend_list",
   "payload": {
@@ -227,7 +227,7 @@ Get all friends of the current user.
         "email": "john@example.com",
         "avatarUrl": "/files/avatar.png",
         "isOnline": true,
-        "lastSeen": 1234567890
+        "lastSeen": 1708876800000
       }
     ],
     "totalCount": 1
@@ -296,7 +296,7 @@ Get all friends with their online status.
       "name": "John Doe",
       "email": "john@example.com",
       "isOnline": true,
-      "connectedAt": 1234567890
+      "connectedAt": 1708876800000
     }
   ],
   "totalFriends": 5,
@@ -388,6 +388,366 @@ curl -X POST http://localhost:3000/api/realtime/rooms/room-uuid/invite \
 
 ---
 
+## WebSocket API
+
+### Connection
+
+```
+ws://localhost:3000/api/realtime/ws
+```
+
+Authentication via cookie (`accessToken`). Connect with `credentials: 'include'` or pass the cookie header directly.
+
+---
+
+### Base Message Structure
+
+모든 WebSocket 메시지는 아래 구조를 기반으로 함:
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "message_type",
+  "payload": { }
+}
+```
+
+---
+
+### Client → Server Messages
+
+#### 1. chat
+채팅 메시지 전송.
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "chat",
+  "payload": {
+    "roomId": "room-uuid",
+    "userId": "user-uuid",
+    "name": "John Doe",
+    "content": "Hello world",
+    "messageType": "text"
+  }
+}
+```
+
+`messageType`: `"text"` | `"image"` | `"file"` (default: `"text"`)
+
+파일 메시지일 경우 추가 필드:
+```json
+{
+  "originalFilename": "photo.png",
+  "mimeType": "image/png",
+  "fileSize": 204800
+}
+```
+
+---
+
+#### 2. mark_read
+특정 방의 메시지를 읽음 처리.
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "mark_read",
+  "payload": {
+    "roomId": "room-uuid",
+    "lastReadTimestamp": 1708876800000
+  }
+}
+```
+
+---
+
+#### 3. pong
+서버 ping에 대한 응답. 서버가 ping을 보내면 클라이언트가 pong으로 응답해야 함 (30초 주기).
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "pong",
+  "payload": {
+    "latency": 42
+  }
+}
+```
+
+---
+
+### Server → Client Messages
+
+#### 1. ping
+서버가 연결 상태 확인을 위해 30초마다 전송. 클라이언트는 pong으로 응답해야 함.
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "ping"
+}
+```
+
+---
+
+#### 2. chat
+방의 다른 멤버가 보낸 채팅 메시지 수신.
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "chat",
+  "payload": {
+    "roomId": "room-uuid",
+    "userId": "sender-uuid",
+    "name": "John Doe",
+    "content": "Hello world",
+    "messageType": "text"
+  }
+}
+```
+
+---
+
+#### 3. room_invitation
+내가 방에 초대됐을 때 수신.
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "room_invitation",
+  "payload": {
+    "roomId": "room-uuid",
+    "roomName": "My Room",
+    "inviterName": "Jane Doe",
+    "inviteeName": "John Doe"
+  }
+}
+```
+
+---
+
+#### 4. room_joined
+같은 방의 멤버가 새로 입장했을 때 방 전체에 브로드캐스트.
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "room_joined",
+  "payload": {
+    "roomId": "room-uuid",
+    "roomName": "My Room",
+    "inviterName": "Jane Doe",
+    "newMemberName": "John Doe"
+  }
+}
+```
+
+---
+
+#### 5. leave_room
+같은 방의 멤버가 나갔을 때 방 전체에 브로드캐스트.
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "leave_room",
+  "payload": {
+    "roomId": "room-uuid",
+    "userId": "user-uuid",
+    "name": "John Doe"
+  }
+}
+```
+
+---
+
+#### 6. room_state
+WebSocket 연결 시 또는 재연결 시 서버가 자동으로 전송. 이전 메시지 + 안 읽은 메시지 + 멤버 목록 포함.
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "room_state",
+  "payload": {
+    "room": {
+      "id": "room-uuid",
+      "name": "My Room",
+      "masterId": "user-uuid",
+      "description": "Room description",
+      "isPrivate": false,
+      "maxUsers": 50,
+      "memberCount": 5,
+      "createdAt": 1708876800000,
+      "updatedAt": 1708876800000
+    },
+    "previousMessages": [
+      {
+        "id": "msg-uuid",
+        "content": "Hello",
+        "userId": "user-uuid",
+        "userName": "John Doe",
+        "messageType": "text",
+        "timestamp": 1708876800000,
+        "isRead": true
+      }
+    ],
+    "unreadMessages": [
+      {
+        "id": "msg-uuid",
+        "content": "You missed this",
+        "userId": "user-uuid",
+        "userName": "Jane Doe",
+        "messageType": "text",
+        "timestamp": 1708876800000,
+        "isRead": false
+      }
+    ],
+    "members": [
+      {
+        "userId": "user-uuid",
+        "name": "John Doe",
+        "joinedAt": 1708876800000,
+        "isOnline": true
+      }
+    ],
+    "readState": {
+      "lastReadTimestamp": 1708876800000,
+      "unreadCount": 3,
+      "totalMessages": 50
+    }
+  }
+}
+```
+
+---
+
+#### 7. friend_request
+친구 요청 수신.
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "friend_request",
+  "payload": {
+    "requesterId": "user-uuid",
+    "requesterName": "Jane Doe",
+    "addresseeId": "user-uuid",
+    "addresseeEmail": "john@example.com",
+    "addresseeName": "John Doe",
+    "createdAt": 1708876800000
+  }
+}
+```
+
+---
+
+#### 8. friend_request_response
+내가 보낸 친구 요청에 대한 수락/거절 응답 수신.
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "friend_request_response",
+  "payload": {
+    "requestId": "request-uuid",
+    "requesterId": "user-uuid",
+    "requesterName": "Jane Doe",
+    "addresseeId": "user-uuid",
+    "addresseeName": "John Doe",
+    "status": "accepted",
+    "createdAt": 1708876800000,
+    "acceptedAt": 1708876800000
+  }
+}
+```
+
+`status`: `"pending"` | `"accepted"` | `"rejected"`
+
+---
+
+#### 9. friend_list
+친구 목록 업데이트 (친구 수락/차단/해제/삭제 시 관련 유저들에게 자동 전송).
+
+```json
+{
+  "id": "uuid-v4",
+  "timestamp": 1708876800000,
+  "version": "1.0",
+  "type": "friend_list",
+  "payload": {
+    "friends": [
+      {
+        "id": "user-uuid",
+        "name": "Jane Doe",
+        "email": "jane@example.com",
+        "avatarUrl": "/files/avatar.png",
+        "isOnline": true,
+        "lastSeen": 1708876800000
+      }
+    ],
+    "totalCount": 5,
+    "updateReason": "friend_request_accepted"
+  }
+}
+```
+
+`updateReason`: `"friend_request_accepted"` | `"friend_blocked"` | `"friend_unblocked"` | `"friend_removed"`
+
+---
+
+### WebSocket Lifecycle
+
+```
+Client                          Server
+  |                               |
+  |--- connect (cookie) --------->|  JWT verification
+  |                               |
+  |<-- room_state (per room) -----|  Auto-sent on connect (session restore)
+  |                               |
+  |--- chat ---------------------->|  Send message
+  |<-- chat (broadcast) ----------|  Broadcast to all room members
+  |                               |
+  |<-- ping (every 30s) ----------|  Keepalive
+  |--- pong ---------------------->|
+  |                               |
+  |--- mark_read ----------------->|  Mark messages as read
+  |                               |
+  |    (disconnect)               |
+  |--- close -------------------->|
+```
+
+**WebSocket Close Codes:**
+- `1008` : Authentication failed — no token or invalid JWT (sent by server on connect)
+- `1011` : Internal server error (sent by server on unexpected error)
+
+---
+
 ## Notes
 
 - All timestamps are in milliseconds (Unix timestamp)
@@ -395,4 +755,4 @@ curl -X POST http://localhost:3000/api/realtime/rooms/room-uuid/invite \
 - Friend requests are bidirectional - both users become friends when accepted
 - Blocked friends cannot send messages or see each other online
 - Room invitations are sent via WebSocket events to online users
-- User authentication is handled via session cookies 
+- User authentication is handled via session cookies

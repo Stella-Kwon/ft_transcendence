@@ -17,7 +17,7 @@ export class EventService extends EventEmitter {
 
 //event emit
   emitUpdateFriendList(data: FriendListResponsePayloadSchema) {
-    this.emit('friend: list update', data);
+    this.emit('friend:list_update', data);
     console.log(`Event: Friend list updated for ${data.updateReason}`);
   }
 
@@ -55,7 +55,7 @@ export class EventService extends EventEmitter {
 // event listener
 
   onUpdateFriendList(callback: (data: FriendListResponsePayloadSchema) => void) {
-    this.on('friend: list update', callback);
+    this.on('friend:list_update', callback);
   }
 
   onFriendRequest(callback: (data: FriendRequestPayloadSchema) => void) {

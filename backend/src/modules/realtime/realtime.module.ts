@@ -20,6 +20,7 @@ declare module "fastify" {
 		websocketService: WebSocketService;
 		websocketConnectionManager: WebSocketConnectionManager;
 		websocketMessageHandler: WebSocketMessageHandler;
+		syncService: SyncService;
 		friendshipService: FriendshipService;
 		eventService: EventService;
 		eventListenerService: EventListenerService;

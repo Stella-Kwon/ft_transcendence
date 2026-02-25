@@ -5,10 +5,13 @@ const https = require("https");
 const http = require("http");
 const { URLSearchParams } = require("url");
 
+// allow Self-signed cert 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 class WebSocketTester {
   constructor() {
-    this.baseUrl = "http://localhost:3000";
-    this.wsUrl = "ws://localhost:3000/api/realtime/ws";
+    this.baseUrl = "https://localhost:3000";
+    this.wsUrl = "wss://localhost:3000/api/realtime/ws";
     this.testResults = [];
     this.cookies = "";
     this.userId = null;
@@ -74,6 +77,7 @@ class WebSocketTester {
         port: 3000,
         path: `/api${path}`,
         method: method,
+        rejectUnauthorized: false,
         headers: {
           "Content-Type": "application/json",
           ...headers,
@@ -84,7 +88,7 @@ class WebSocketTester {
         options.headers.Cookie = this.cookies;
       }
 
-      const req = http.request(options, (res) => {
+      const req = https.request(options, (res) => {
         let responseData = "";
 
         res.on("data", (chunk) => {
@@ -130,7 +134,7 @@ class WebSocketTester {
   async setupTestEnvironment() {
     this.logStep("Setting up test environment");
 
-    const timestamp = new Date();
+    const timestamp = Date.now();
     const randomNum = Math.floor(Math.random() * 10000);
     const email = `wstest_${timestamp}_${randomNum}@test.com`;
     const name = `WebSocket Test User ${timestamp}_${randomNum}`;
@@ -161,28 +165,28 @@ class WebSocketTester {
         }
       );
 
-      if (
-        registerResponse.statusCode !== 201 &&
-        registerResponse.statusCode !== 400
-      ) {
+      if (registerResponse.statusCode === 201) {
+        // register가 자동으로 로그인 처리함 (accessToken 쿠키 세팅)
+        this.userId = registerResponse.data.id;
+        this.userName = registerResponse.data.name;
+      } else if (registerResponse.statusCode === 400) {
+        // 이미 존재하는 유저 → 로그아웃 후 로그인
+        await this.makeRequest("POST", "/auth/logout");
+        this.logInfo("Logging in test user...");
+        const loginResponse = await this.makeRequest("POST", "/auth/login/password", {
+          email,
+          password: "password123",
+        });
+        if (loginResponse.statusCode !== 200) {
+          throw new Error(`Login failed: ${JSON.stringify(loginResponse.data)}`);
+        }
+        this.userId = loginResponse.data.id;
+        this.userName = loginResponse.data.name;
+      } else {
         throw new Error(
           `Registration failed: ${JSON.stringify(registerResponse.data)}`
         );
       }
-
-      // Login user
-      this.logInfo("Logging in test user...");
-      const loginResponse = await this.makeRequest("POST", "/auth/login", {
-        email,
-        password: "password123",
-      });
-
-      if (loginResponse.statusCode !== 200) {
-        throw new Error(`Login failed: ${JSON.stringify(loginResponse.data)}`);
-      }
-
-      this.userId = loginResponse.data.id;
-      this.userName = loginResponse.data.name;
 
       this.logSuccess(`Test user created: ${this.userName} (${this.userId})`);
       return true;
@@ -231,14 +235,8 @@ class WebSocketTester {
       };
 
       console.log("🔗 Connecting to WebSocket with cookies:", this.cookies);
-      // WebSocket 연결
-      const wsUrl = `ws://localhost:3000/api/realtime/ws?token=${encodeURIComponent(
-        this.cookies
-      )}`;
-      console.log("🔗 WebSocket URL:", wsUrl);
-      console.log("🔗 Final WebSocket URL:", wsUrl);
 
-      this.ws = new WebSocket(wsUrl, wsOptions);
+      this.ws = new WebSocket(this.wsUrl, { ...wsOptions, rejectUnauthorized: false });
 
       this.ws.on("open", () => {
         this.logSuccess("WebSocket connection established");
@@ -465,13 +463,11 @@ class WebSocketTester {
 
       const syncMessage = {
         id: this.generateId(),
-        type: "sync",
+        type: "room_state",
         payload: {
-          roomId: this.roomId,
-          users: [],
-          messages: [],
+          room: { id: this.roomId },
         },
-        timestamp: new Date(),
+        timestamp: Date.now(),
         version: "1.0",
       };
 
@@ -508,7 +504,7 @@ class WebSocketTester {
         ];
 
         const hasTestMessages = testMessages.some((testMsg) =>
-          allMessages.some((msg) => msg.payload.content.includes(testMsg))
+          allMessages.some((msg) => msg.content && msg.content.includes(testMsg))
         );
 
         if (hasTestMessages) {
@@ -596,6 +592,64 @@ class WebSocketTester {
         }, index * 500); // 500ms 간격으로 보내기
       });
     });
+  }
+
+  // Test mark_read
+  async testMarkRead() {
+    this.logStep("Testing Mark Read");
+
+    try {
+      // 채팅 메시지 3개 보내서 unread 생성
+      const testMessages = ["Mark read test 1", "Mark read test 2", "Mark read test 3"];
+      for (const content of testMessages) {
+        await this.sendMessage({
+          id: this.generateId(),
+          type: "chat",
+          timestamp: Date.now(),
+          version: "1.0",
+          payload: {
+            roomId: this.roomId,
+            userId: this.userId,
+            name: this.userName,
+            content,
+            messageType: "text",
+          },
+        });
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      // 잠깐 대기 후 mark_read 전송
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const lastReadTimestamp = Date.now();
+
+      const unreadCountPromise = this.waitForMessage("unread_count", 5000);
+
+      await this.sendMessage({
+        id: this.generateId(),
+        type: "mark_read",
+        timestamp: Date.now(),
+        version: "1.0",
+        payload: {
+          roomId: this.roomId,
+          lastReadTimestamp,
+        },
+      });
+
+      const unreadCountMessage = await unreadCountPromise;
+
+      if (unreadCountMessage.payload.roomId !== this.roomId) {
+        throw new Error("Room ID mismatch in unread_count response");
+      }
+
+      this.logSuccess("Mark read test passed");
+      this.logInfo(`roomId: ${unreadCountMessage.payload.roomId}`);
+      this.logInfo(`unreadCount: ${unreadCountMessage.payload.unreadCount}`);
+
+      return true;
+    } catch (error) {
+      this.logError(`Mark read test failed: ${error.message}`);
+      return false;
+    }
   }
 
   // Test error handling
@@ -701,6 +755,7 @@ class WebSocketTester {
       { name: "Ping/Pong", fn: () => this.testPingPong() },
       { name: "Room Synchronization", fn: () => this.testRoomSync() },
       { name: "Chat Messaging", fn: () => this.testChat() },
+      { name: "Mark Read", fn: () => this.testMarkRead() },
       { name: "Error Handling", fn: () => this.testErrorHandling() },
       {
         name: "Connection Persistence",

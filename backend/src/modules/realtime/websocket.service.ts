@@ -25,7 +25,6 @@ export class WebSocketService {
   ) {
     this.connectionManager = new WebSocketConnectionManager(
       this.connectionService,
-      this.roomService,
       this.messageService,
       this.eventService,
       this.syncService

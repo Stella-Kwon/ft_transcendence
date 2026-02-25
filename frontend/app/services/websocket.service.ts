@@ -25,7 +25,9 @@ export class WebSocketService {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
-  private reconnectDelay = 2000;
+  private reconnectDelay = 1000;
+  private currentReconnectDelay = 1000;
+  private maxReconnectDelay = 30000;
   private pingInterval: NodeJS.Timeout | null = null;
   private eventHandlers: WebSocketEventHandlers = {};
   private connectionStatus: ConnectionStatus = 'disconnected';
@@ -43,7 +45,7 @@ export class WebSocketService {
       }
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//localhost:3000/api/realtime/ws`;
+      const wsUrl = `${protocol}//${window.location.host}/api/realtime/ws`;
 
       this.ws = new WebSocket(wsUrl);
       this.connectionStatus = 'connecting';
@@ -51,6 +53,7 @@ export class WebSocketService {
       this.ws.onopen = () => {
         this.connectionStatus = 'connected';
         this.reconnectAttempts = 0;
+        this.currentReconnectDelay = this.reconnectDelay;
         this.eventHandlers.onOpen?.();
         this.startPingInterval();
       };
@@ -65,7 +68,7 @@ export class WebSocketService {
         }
 
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
-          setTimeout(() => this.attemptReconnect(), this.reconnectDelay);
+          setTimeout(() => this.attemptReconnect(), this.currentReconnectDelay);
         } else {
           this.handleAuthFailure();
         }
@@ -95,8 +98,11 @@ export class WebSocketService {
 
   disconnect(): void {
     this.stopPingInterval();
-    if (this.ws && this.ws.readyState !== WebSocket.CLOSED) {
-      this.ws.close();
+    this.connectionStatus = 'disconnected';
+    if (this.ws) {
+      if (this.ws.readyState !== WebSocket.CLOSED) {
+        this.ws.close();
+      }
       this.ws = null;
     }
   }
@@ -274,19 +280,21 @@ export class WebSocketService {
 
   private async attemptReconnect(): Promise<void> {
     this.reconnectAttempts++;
+    this.currentReconnectDelay = Math.min(this.currentReconnectDelay * 2, this.maxReconnectDelay);
 
     try {
       if (this.ws) {
-        this.ws.close();
+        if (this.ws.readyState !== WebSocket.CLOSED) {
+          this.ws.close();
+        }
         this.ws = null;
       }
 
-      await new Promise(resolve => setTimeout(resolve, 1000));
       await this.connect();
     } catch (error) {
       console.error('Reconnection failed:', error);
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
-        setTimeout(() => this.attemptReconnect(), this.reconnectDelay);
+        setTimeout(() => this.attemptReconnect(), this.currentReconnectDelay);
       } else {
         this.connectionStatus = 'error';
       }

@@ -3,7 +3,6 @@ import { EntityManager } from "@mikro-orm/core";
 import { randomUUID } from 'crypto';
 import { WebSocket } from 'ws';
 import { ConnectionService } from "./connection.service";
-import { RoomService } from "./room.service";
 import { MessageService } from "./message.service";
 import { EventService } from "./event.service";
 import { SyncService } from "./sync.service";
@@ -20,13 +19,13 @@ export interface WebSocketConnection {
 
 export class WebSocketConnectionManager {
   private connections = new Map<string, WebSocketConnection>(); // socketId -> WebSocketConnection
+  private userConnectionMap = new Map<string, Set<WebSocketConnection>>(); // userId -> Set<WebSocketConnection>
   private pingIntervals = new Map<string, NodeJS.Timeout>(); // socketId -> pingInterval
   private pendingPings = new Map<string, { timestamp: number; missedPongs: number }>(); // socketId -> ping info
   private messageBuffer = new Map<string, any[]>(); // userId -> buffered messages
 
   constructor(
     private connectionService: ConnectionService,
-    private roomService: RoomService,
     private messageService: MessageService,
     private eventService: EventService,
     private syncService: SyncService
@@ -62,6 +61,10 @@ export class WebSocketConnectionManager {
 
     // Store connection
     this.connections.set(socketId, wsConnection);
+    if (!this.userConnectionMap.has(userId)) {
+      this.userConnectionMap.set(userId, new Set());
+    }
+    this.userConnectionMap.get(userId)!.add(wsConnection);
 
     // Register with connection service
     this.connectionService.createConnection(connectionId, socketId, email, userId, name);
@@ -102,25 +105,19 @@ export class WebSocketConnectionManager {
   private async waitForEntityManager(wsConnection: WebSocketConnection) {
     console.error('EntityManager is not available, waiting for it to become available...');
 
-    let retryCount = 0;
     const maxRetries = 10;
     const retryInterval = 1000;
 
-    const attemptCheck = async () => {
+    for (let retryCount = 0; retryCount < maxRetries; retryCount++) {
+      await new Promise(resolve => setTimeout(resolve, retryInterval));
       if (wsConnection.entityManager) {
         await this.restoreUserSession(wsConnection);
-      } else {
-        retryCount++;
-        if (retryCount < maxRetries) {
-          setTimeout(attemptCheck, retryInterval);
-        } else {
-          console.error(`EntityManager not available after ${maxRetries} attempts, closing connection`);
-          this.handleConnectionClose(wsConnection.socketId);
-        }
+        return;
       }
-    };
+    }
 
-    attemptCheck();
+    console.error(`EntityManager not available after ${maxRetries} attempts, closing connection`);
+    this.handleConnectionClose(wsConnection.socketId);
   }
 
   // Setup ping interval
@@ -190,6 +187,11 @@ export class WebSocketConnectionManager {
     // so isUserOnline() returns false when the event listener checks it
     this.connectionService.removeConnection(wsConnection.connectionId);
     this.connections.delete(socketId);
+    const userConns = this.userConnectionMap.get(wsConnection.userId);
+    if (userConns) {
+      userConns.delete(wsConnection);
+      if (userConns.size === 0) this.userConnectionMap.delete(wsConnection.userId);
+    }
 
     // Emit offline status after removal
     await this.eventService.emitUserStatusUpdate({ userId: wsConnection.userId, isOnline: false });
@@ -206,7 +208,7 @@ export class WebSocketConnectionManager {
 
   sendMessage(wsConnection: WebSocketConnection, message: any) {
     try {
-      if (wsConnection.socket.readyState === 1) { // WebSocket.OPEN
+      if (wsConnection.socket.readyState === WebSocket.OPEN) {
         wsConnection.socket.send(JSON.stringify(message));
       } else {
         this.bufferMessage(wsConnection.userId, message);
@@ -230,6 +232,7 @@ export class WebSocketConnectionManager {
     // Limit buffer size to 1000 messages
     if (buffer.length > 1000) {
       buffer.shift();
+      console.warn(`Message buffer full for user ${userId}, oldest message dropped`);
     }
   }
 
@@ -270,6 +273,6 @@ export class WebSocketConnectionManager {
   }
 
   getUserConnections(userId: string): WebSocketConnection[] {
-    return Array.from(this.connections.values()).filter(conn => conn.userId === userId);
+    return Array.from(this.userConnectionMap.get(userId) ?? new Set());
   }
 }

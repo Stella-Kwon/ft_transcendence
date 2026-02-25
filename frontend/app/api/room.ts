@@ -108,11 +108,9 @@ class RoomAPI {
   // Get user's room list
   async getUserRooms(userId: string): Promise<{
     roomList: (Room & { unreadCount: number })[];
-    onlineMembers: number;
   }> {
     const response = await fetchJson<{
       roomList: (Room & { unreadCount: number })[];
-      onlineMembers: number;
     }>(`${API_BASE}/api/realtime/rooms/${userId}/roomlist`);
     
     if (!response) {
