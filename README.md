@@ -154,6 +154,3 @@ node backend/testing_realtime/test_load.js        # Load & stress tests
 
 MIT — Copyright (c) 2025 Hoang Tran, Alice Li Maunumäki, Timo Saari, Joseph Lu, Stella-Kwon.
 
----
-
-*Final group project version (archived 2025-08-01).*
