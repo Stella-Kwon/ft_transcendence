@@ -32,18 +32,14 @@ export const realtimeModule: FastifyPluginAsync = async (fastify, options) => {
   const connectionService = new ConnectionService();
   const roomService = new RoomService(eventService);
   const syncService = new SyncService();
-  const messageService = new MessageService(roomService, syncService);
+  const messageService = new MessageService();
   const friendshipService = new FriendshipService(connectionService, eventService);
   
-  // SyncService에 의존성 주입
   syncService.setDependencies(roomService, friendshipService, messageService, eventService);
   
-  // EventListenerService 생성
   const eventListenerService = new EventListenerService(
     eventService,
-    roomService,
     connectionService,
-    messageService,
     friendshipService,
     fastify.orm
   );
@@ -60,9 +56,11 @@ export const realtimeModule: FastifyPluginAsync = async (fastify, options) => {
   fastify.decorate('websocketService', websocketService);
 
 
+  //extended the websocket plugin with custom login
+  // -> register it as plugin to ensure it is ready during the app's loading
   await fastify.register(websocketService.plugin);
+  //need to be ready from the start in order to know where to call what route
+  fastify.register(roomController);
+  fastify.register(friendshipController)
 
-  // Register controllers (they already have their own paths defined)
-  await fastify.register(friendshipController);
-  await fastify.register(roomController);
 }; 

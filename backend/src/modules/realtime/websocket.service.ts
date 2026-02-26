@@ -1,14 +1,14 @@
-import { FastifyPluginAsync, FastifyInstance } from "fastify";
-import { FastifyPluginOptions } from "fastify";
+import { FastifyPluginAsync, FastifyInstance, FastifyPluginOptions } from "fastify";
+import fastifyWebsocket from "@fastify/websocket";
 import { RoomService } from "./room.service";
 import { ConnectionService } from "./connection.service";
 import { MessageService } from "./message.service";
 import { EventService } from "./event.service";
 import { SyncService } from "./sync.service";
 import { EventListenerService } from "./event-listener.service";
-import { WebSocketConnectionManager, WebSocketConnection } from './websocket-connection.manager';
-import { WebSocketMessageHandler } from './websocket-message.handler';
-import { WebSocketErrorHandler } from './websocket-error-handler';
+import { WebSocketConnectionManager, WebSocketConnection } from "./websocket-connection.manager";
+import { WebSocketMessageHandler } from "./websocket-message.handler";
+import { WebSocketErrorHandler } from "./websocket-error-handler";
 import { AnyMessage } from "./dto";
 
 export class WebSocketService {
@@ -51,11 +51,11 @@ export class WebSocketService {
 
   // Fastify plugin for WebSocket support
   plugin: FastifyPluginAsync = async (fastify: FastifyInstance, options: FastifyPluginOptions) => {
-    await fastify.register(require('@fastify/websocket'));
+    await fastify.register(fastifyWebsocket);
 
     fastify.get('/ws', { websocket: true } as any, (connection: any, req: any) => {
       let socket: any = null;
-
+      //depends on the version or execution env receiving readystate field.
       if (connection.socket && connection.socket.readyState !== undefined) {
         socket = connection.socket;
       } else if (connection.readyState !== undefined) {
@@ -64,7 +64,6 @@ export class WebSocketService {
         console.error('No valid WebSocket found in connection object');
         return;
       }
-
       this.handleWebSocketConnection({ socket }, req);
     });
   };
@@ -77,6 +76,7 @@ export class WebSocketService {
         console.error('WebSocket authentication failed:', authResult.error);
         if (connection && connection.socket) {
           connection.socket.close(1008, authResult.error);
+           console.error('connection socket closed within 1008 code: ', authResult.error);
         }
         return;
       }
@@ -100,14 +100,14 @@ export class WebSocketService {
       });
 
       connection.socket.on('error', async (error: Error) => {
-        console.error(`WebSocket error for ${wsConnection.socketId}:`, error);
+        // console.error(`WebSocket error for ${wsConnection.socketId}:`, error);
         await this.connectionManager.handleConnectionClose(wsConnection.socketId);
       });
     } catch (error) {
       console.error('WebSocket connection error:', error);
       if (connection && connection.socket) {
         try {
-          connection.socket.close(1011, 'Internal server error');
+          // connection.socket.close(1011, 'Internal server error');
         } catch (closeError) {
           console.error('Error closing socket:', closeError);
         }

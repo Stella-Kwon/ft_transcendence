@@ -1,7 +1,5 @@
 import { EventService } from './event.service';
-import { RoomService } from './room.service';
 import { ConnectionService } from './connection.service';
-import { MessageService } from './message.service';
 import { FriendshipService } from './friendship.service';
 import { NotificationMessage} from './dto';
 import { WebSocketErrorHandler } from './websocket-error-handler';
@@ -10,9 +8,7 @@ import { UnreadCountMessage } from './dto/sync.schema';
 export class EventListenerService {
   constructor(
     private eventService: EventService,
-    private roomService: RoomService,
     private connectionService: ConnectionService,
-    private messageService: MessageService,
     private friendshipService: FriendshipService,
     private orm: any // MikroORM instance
   ) {}

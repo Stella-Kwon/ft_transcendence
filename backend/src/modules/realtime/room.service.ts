@@ -16,10 +16,7 @@ export class RoomService {
     private eventService: EventService
   ) {}
 
-  // ==============================================
-  // Database Operations (HTTP API용)
-  // ===========================================
-
+// <Database Operations> ---------------------------------
   async createRoom(em: EntityManager, name: string, masterId: string, description?: string, isPrivate = false, maxUsers = 50): Promise<Room> {
     // Check if user already has a room with the same name (only among user's rooms)
     const userRooms = await this.getUserRooms(em, masterId);
@@ -88,23 +85,17 @@ export class RoomService {
 
     for (const name of inviteeNames) {
       try {
-        // 사용자 이름으로 실제 User 찾기
         const inviteeUser = await this.findUserByName(em, name);
 
-        // 이미 룸에 있는지 확인
         const existingMember = room.members.getItems().find(member => member.userId === inviteeUser.id);
         if (existingMember) {
           results.failed.push({ name, reason: 'User already in room' });
           continue;
         }
-
-        // 룸이 가득 찬지 확인
         if (room.members.length >= room.maxUsers) {
           results.failed.push({ name, reason: 'Room is full' });
           continue;
         }
-
-        // 멤버 추가
         const member = em.create(RoomMemberEntity, {
           id: randomUUID(),
           userId: inviteeUser.id,
@@ -114,11 +105,7 @@ export class RoomService {
         });
 
         room.members.add(member);
-        
-        // 메모리에 추가
         this.addUserToRoomInMemory(inviteeUser.id, roomId);
-
-        // 이벤트 발생 (초대자와 피초대자가 다른 경우만)
         if (inviteeUser.id !== inviterId) {
           this.eventService.emitRoomJoined({
             roomId: room.id,
@@ -131,7 +118,6 @@ export class RoomService {
         results.success.push(name);
         
       } catch (error) {
-        // NotFoundException이면 'User not found', 그 외는 'Failed to add user'
         if (error instanceof NotFoundException) {
           results.failed.push({ name, reason: 'User not found' });
         } else {
@@ -139,8 +125,7 @@ export class RoomService {
         }
       }
     }
-
-    // 변경사항 저장
+    //store updates
     if (results.success.length > 0) {
       room.updatedAt = new Date();
       await em.persistAndFlush(room);
@@ -194,25 +179,19 @@ export class RoomService {
     await this.checkAndDeleteEmptyRoom(em, roomId);
   }
 
-  // 빈 방 체크 및 자동 삭제
+  // rm room automatically
   private async checkAndDeleteEmptyRoom(em: EntityManager, roomId: string): Promise<boolean> {
     try {
       const room = await em.findOne(Room, { id: roomId }, { populate: ['members'] });
       if (!room) return false;
-
-      // 방에 멤버가 없으면 삭제
       if (room.members.length === 0) {
         console.log(`Room ${room.name} (${roomId}) is empty, deleting...`);
-        
-        // 관련 데이터 정리
+        //rm related data in room
         await this.cleanupEmptyRoomData(em, roomId);
-        
-        // 방 삭제
+        //rm room itself
         await em.removeAndFlush(room);
-        
-        // 메모리에서도 제거
+        //rm from our Map
         this.usersInRoom.delete(roomId);
-        
         console.log(`Empty room ${room.name} (${roomId}) deleted successfully`);
         return true;
       }
@@ -224,15 +203,13 @@ export class RoomService {
     }
   }
 
-  // 빈 방 관련 데이터 정리
+  //rm all the empty room's data 
   private async cleanupEmptyRoomData(em: EntityManager, roomId: string): Promise<void> {
     try {
-      // 1. UserReadMessage 정리
+      // 1. rm all UserReadMessage
       await em.nativeDelete('UserReadMessage', { room: roomId });
-      
-      // 2. ChatMessage 정리 - 모든 메시지 삭제
+      // 2. rm all ChatMessage
       await em.nativeDelete('ChatMessage', { roomId });
-      
       console.log(`Cleaned up all data (messages, read states) for room ${roomId}`);
     } catch (error) {
       console.error('Error cleaning up room data:', error);
@@ -255,9 +232,7 @@ export class RoomService {
   }
 
 
-  // =============================================
-  // Memory Operations
-  // ===========================================
+  //<Memory Operations> --------------------------------
 
   // Add user to room in memory 
   addUserToRoomInMemory(userId: string, roomId: string): boolean {
@@ -305,7 +280,7 @@ export class RoomService {
     return roomMembers ? Array.from(roomMembers) : [];
   }
 
-  // WebSocket용 - 메모리에서 빠르게 roomId의 userIds 반환
+  //Get users memeber from the same room
   getRoomMembersFromMemory(roomId: string): string[] {
     return this.getUsersInRoom(roomId);
   }

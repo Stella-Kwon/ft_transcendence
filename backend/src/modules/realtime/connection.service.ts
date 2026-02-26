@@ -72,10 +72,10 @@ export class ConnectionService {
     return true;
   }
 
-  // Get all connections
-  getAllConnections(): UserConnection[] {
-    return Array.from(this.connections.values());
-  }
+  // // Get all connections
+  // getAllConnections(): UserConnection[] {
+  //   return Array.from(this.connections.values());
+  // }
 
   // Get all online users (unique per userId)
   getOnlineUsers(): UserConnection[] {

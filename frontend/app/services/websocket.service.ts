@@ -44,8 +44,10 @@ export class WebSocketService {
         return;
       }
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/api/realtime/ws`;
+      const apiBase = import.meta.env.VITE_API_BASE_URL;
+      const wsUrl = apiBase
+        ? `${apiBase.replace(/^http/, 'ws')}/api/realtime/ws`
+        : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/realtime/ws`;
 
       this.ws = new WebSocket(wsUrl);
       this.connectionStatus = 'connecting';

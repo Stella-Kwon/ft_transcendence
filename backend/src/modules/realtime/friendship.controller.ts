@@ -1,7 +1,6 @@
-import { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
-import { Static, Type } from "@sinclair/typebox";
-import { 
-  friendRequestResponseSchema,
+import { FastifyPluginAsync, FastifyRequest } from "fastify";
+import { Type } from "@sinclair/typebox";
+import {
   friendListResponseSchema,
   friendPendingRequestPayloadSchema
 } from "./dto/friend.schema";
@@ -118,7 +117,6 @@ export const friendshipController: FastifyPluginAsync = async (fastify) => {
       }
       throw new InternalServerErrorException('Failed to accept friend request');
     }
-   
   });
 
   
@@ -162,7 +160,7 @@ export const friendshipController: FastifyPluginAsync = async (fastify) => {
   }
   });
 
-  // Get pending friend requests list (HTTP API - 앱 시작 시 조회)
+  // Get pending friend requests list
   fastify.get('/friends/requests', {
     schema: {
       response: {
@@ -188,7 +186,7 @@ export const friendshipController: FastifyPluginAsync = async (fastify) => {
   }
   });
 
-  // Get friends list (HTTP API - 앱 시작 시 조회)
+  // Get friends list
   fastify.get('/friends', {
     schema: {
       response: {
@@ -244,7 +242,7 @@ export const friendshipController: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // 🎯 친구 블록 기능
+  // block a friend
   fastify.post('/friends/:friendId/block', {
     schema: {
       params: Type.Object({
@@ -288,7 +286,7 @@ export const friendshipController: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // 🎯 친구 블록 해제 기능
+  // revocate blocking
   fastify.post('/friends/:friendId/unblock', {
     schema: {
       params: Type.Object({
@@ -415,7 +413,7 @@ export const friendshipController: FastifyPluginAsync = async (fastify) => {
       
       return reply.send({
         success: true,
-        friends: friendsWithStatus, // 모든 친구 반환 (상태 포함)
+        friends: friendsWithStatus,
         totalFriends: friendsWithStatus.length,
         onlineFriends: onlineFriendsCount
       });

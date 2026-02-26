@@ -12,14 +12,14 @@ export interface WebSocketConnection {
   socketId: string;
   userId: string;
   name: string;
-  connectionId: string;
+  connectionId: string; //devices connection per user
   socket: any; // WebSocket instance
   entityManager: EntityManager; // Connection-specific EntityManager for each connection
 }
 
 export class WebSocketConnectionManager {
   private connections = new Map<string, WebSocketConnection>(); // socketId -> WebSocketConnection
-  private userConnectionMap = new Map<string, Set<WebSocketConnection>>(); // userId -> Set<WebSocketConnection>
+  private userWebConnection = new Map<string, Set<WebSocketConnection>>(); // userId -> Set<WebSocketConnection>
   private pingIntervals = new Map<string, NodeJS.Timeout>(); // socketId -> pingInterval
   private pendingPings = new Map<string, { timestamp: number; missedPongs: number }>(); // socketId -> ping info
   private messageBuffer = new Map<string, any[]>(); // userId -> buffered messages
@@ -61,10 +61,10 @@ export class WebSocketConnectionManager {
 
     // Store connection
     this.connections.set(socketId, wsConnection);
-    if (!this.userConnectionMap.has(userId)) {
-      this.userConnectionMap.set(userId, new Set());
+    if (!this.userWebConnection.has(userId)) {
+      this.userWebConnection.set(userId, new Set());
     }
-    this.userConnectionMap.get(userId)!.add(wsConnection);
+    this.userWebConnection.get(userId)!.add(wsConnection);
 
     // Register with connection service
     this.connectionService.createConnection(connectionId, socketId, email, userId, name);
@@ -143,10 +143,10 @@ export class WebSocketConnectionManager {
 
       if (timeSinceLastPing > 60000) {
         pendingPing.missedPongs++;
-        console.warn(`Missed pong from ${wsConnection.userId} (${pendingPing.missedPongs}/3)`);
+        // console.warn(`Missed pong from ${wsConnection.userId} (${pendingPing.missedPongs}/3)`);
 
         if (pendingPing.missedPongs >= 3) {
-          console.error(`Connection ${socketId} unresponsive after 3 missed pongs, closing connection`);
+          // console.error(`Connection ${socketId} unresponsive after 3 missed pongs, closing connection`);
           this.handleConnectionClose(socketId);
           return;
         }
@@ -187,10 +187,10 @@ export class WebSocketConnectionManager {
     // so isUserOnline() returns false when the event listener checks it
     this.connectionService.removeConnection(wsConnection.connectionId);
     this.connections.delete(socketId);
-    const userConns = this.userConnectionMap.get(wsConnection.userId);
+    const userConns = this.userWebConnection.get(wsConnection.userId);
     if (userConns) {
       userConns.delete(wsConnection);
-      if (userConns.size === 0) this.userConnectionMap.delete(wsConnection.userId);
+      if (userConns.size === 0) this.userWebConnection.delete(wsConnection.userId);
     }
 
     // Emit offline status after removal
@@ -206,6 +206,7 @@ export class WebSocketConnectionManager {
     }
   }
 
+  //no async due to prevent mixing up the sequence in buufferMessage
   sendMessage(wsConnection: WebSocketConnection, message: any) {
     try {
       if (wsConnection.socket.readyState === WebSocket.OPEN) {
@@ -267,12 +268,13 @@ export class WebSocketConnectionManager {
   getConnection(socketId: string): WebSocketConnection | undefined {
     return this.connections.get(socketId);
   }
-
+  
+//all-connections
   getAllConnections(): WebSocketConnection[] {
     return Array.from(this.connections.values());
   }
 
   getUserConnections(userId: string): WebSocketConnection[] {
-    return Array.from(this.userConnectionMap.get(userId) ?? new Set());
+    return Array.from(this.userWebConnection.get(userId) ?? new Set());
   }
 }

@@ -20,12 +20,10 @@ export class MessageService {
   private maxQueueSize = 1000; // Default max messages per room
   
   // In-memory message cache: Map<roomId, ChatMessage[]>
+  // Consider enhancing this to handle overload (more storage) in the meantime
   private messageCache = new Map<string, ChatMessage[]>();
 
-  constructor(
-    private roomService?: any, // RoomService (optional to avoid circular dependency)
-    private syncService?: any  // SyncService (optional to avoid circular dependency)
-  ) {}
+  constructor() {}
 
   // save a chat message to the database
   async saveChatMessageToDatabase(
