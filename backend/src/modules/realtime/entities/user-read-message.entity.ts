@@ -8,7 +8,7 @@ export class UserReadMessageEntity {
   @PrimaryKey()
   id!: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User,  { deleteRule: 'cascade' })
   user!: User;
 
   @ManyToOne(() => Room)

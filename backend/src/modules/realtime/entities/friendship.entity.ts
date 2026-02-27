@@ -1,6 +1,5 @@
 import { Entity, PrimaryKey, Property, ManyToOne, Unique, OneToMany } from "@mikro-orm/core";
 import { User } from "../../user/entities/user.entity";
-import { v4 } from 'uuid';
 
 @Entity()
 @Unique({ properties: ['requester', 'addressee'] })
@@ -8,10 +7,10 @@ export class FriendRequest {
   @PrimaryKey({ type: 'uuid' })
   id!: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { deleteRule: 'cascade' })
   requester!: User;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { deleteRule: 'cascade' })
   addressee!: User;
 
   @Property()
@@ -26,20 +25,20 @@ export class FriendRequest {
   
 
 //user<->user middle table
-  @Entity()
-  export class Friendship {
-    @PrimaryKey({ type: 'uuid' })
-    id!: string;
+@Entity()
+export class Friendship {
+  @PrimaryKey({ type: 'uuid' })
+  id!: string;
 
-    @ManyToOne(() => User)
-    user!: User;
+  @ManyToOne(() => User, { deleteRule: 'cascade' })
+  user!: User;
 
-    @ManyToOne(() => User)
-    friend!: User;
+  @ManyToOne(() => User, { deleteRule: 'cascade' })
+  friend!: User;
 
-    @Property()
-    status: 'active' | 'blocked' = 'active';
-    
-    @Property({ type: 'timestamptz'})
-    createdAt?: Date;
-  }
+  @Property()
+  status: 'active' | 'blocked' = 'active';
+  
+  @Property({ type: 'timestamptz'})
+  createdAt?: Date;
+}
