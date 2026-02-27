@@ -107,7 +107,7 @@ export class WebSocketService {
       console.error('WebSocket connection error:', error);
       if (connection && connection.socket) {
         try {
-          // connection.socket.close(1011, 'Internal server error');
+          connection.socket.close(1011, 'Internal server error');
         } catch (closeError) {
           console.error('Error closing socket:', closeError);
         }

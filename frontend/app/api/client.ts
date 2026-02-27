@@ -8,7 +8,7 @@ export const fetchJson = async<T> (url: string, options?: RequestInit): Promise<
 	const isRealtimeAPI = url.includes('/api/realtime/');
 	
 	if (!user && isRealtimeAPI) {
-		console.log('🔐 User not logged in, skipping realtime API call:', url);
+		console.log('User not logged in, skipping realtime API call:', url);
 		return null;
 	}
 

@@ -66,7 +66,7 @@ export const useFriends = (): UseFriendsState & UseFriendsActions => {
       
       // Check if API call returned null (user not logged in)
       if (!response) {
-        console.log('🔐 User not logged in, skipping friends loading');
+        console.log('User not logged in, skipping friends loading');
         setState(prev => ({ ...prev, loading: false }));
         return;
       }

@@ -161,7 +161,7 @@ export class RoomService {
       throw new NotFoundException(`Room ${roomId} not found`);
     }
 
-    console.log(`🔍 Room found: ${room.name}, current members: ${room.members.length}`);
+    console.log(`Room found: ${room.name}, current members: ${room.members.length}`);
     
     const member = room.members.getItems().find(member => member.userId === userId);
     if (!member) {

@@ -259,7 +259,7 @@ fastify.post("/rooms/:roomId/invite", {
     const userId = (request.user as any)?.id;
     const userName = (request.user as any)?.name;
 
-    console.log('🔍 Invite request:', { roomId, inviteeNames, userId, userName });
+    console.log('Invite request:', { roomId, inviteeNames, userId, userName });
 
     if (!userId) {
       throw new UnauthorizedException("Authentication required");
@@ -385,7 +385,7 @@ fastify.post("/rooms/:roomId/invite", {
       userId: member.userId,
       name: member.name,
       joinedAt: member.joinedAt?.getTime() || Date.now(),
-      isOnline: fastify.connectionService.isUserOnline(member.userId) // 🎯 동적 계산
+      isOnline: fastify.connectionService.isUserOnline(member.userId) // 동적 계산
     }));
 
     const onlineCount = members.filter(member => member.isOnline).length;

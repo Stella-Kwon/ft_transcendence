@@ -94,8 +94,8 @@ class RoomAPI {
       method: 'POST'
     });
     
-    // console.log(`📡 Response status: ${response.status}`);
-    // console.log(`📡 Response headers:`, Object.fromEntries(response.headers.entries()));
+    // console.log(`Response status: ${response.status}`);
+    // console.log(`Response headers:`, Object.fromEntries(response.headers.entries()));
     
     if (!response) {
       throw new Error('Failed to leave room');

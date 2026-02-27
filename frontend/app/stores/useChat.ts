@@ -65,7 +65,7 @@ export const useChat = (): UseChatState & UseChatActions => {
 
  ////Better to check what will be the less way to rerender the component
  ////now it got affected by the state.rooms change so calling several times.   
-    // console.log(`🔍 useMemo currentRoom calculation:`, {
+    // console.log(`useMemo currentRoom calculation:`, {
     //   currentRoomId: state.currentRoomId,
     //   roomsCount: state.rooms.length,
     //   foundRoom: !!room,
@@ -78,11 +78,11 @@ export const useChat = (): UseChatState & UseChatActions => {
   
   const handlersRef = useRef<WebSocketEventHandlers>({
     onOpen: () => {
-      // console.log('🎉 WebSocket onOpen event triggered (before setState)');
+      // console.log('WebSocket onOpen event triggered (before setState)');
       setState(prev => {
         // Only update if not already connected
         if (prev.connectionStatus === 'connected') {
-          // console.log('🔄 Already connected, skipping setState');
+          // console.log('Already connected, skipping setState');
           return prev;
         }
         // console.log('setState: connectionStatus changing from', prev.connectionStatus, 'to connected');
@@ -91,7 +91,7 @@ export const useChat = (): UseChatState & UseChatActions => {
     },
 
     onClose: () => {
-      // console.log('🛑 WebSocket onClose event triggered (before setState)');
+      // console.log('WebSocket onClose event triggered (before setState)');
       setState(prev => {
         console.log('setState: connectionStatus changing from', prev.connectionStatus, 'to disconnected');
         return { ...prev, connectionStatus: 'disconnected' };
@@ -99,7 +99,7 @@ export const useChat = (): UseChatState & UseChatActions => {
     },
 
     onError: (error) => {
-      console.log('❌ WebSocket onError event triggered (before setState)', error);
+      console.log('WebSocket onError event triggered (before setState)', error);
       setState(prev => {
         console.log('setState: connectionStatus changing from', prev.connectionStatus, 'to error');
         return { ...prev, connectionStatus: 'error' };
@@ -107,7 +107,7 @@ export const useChat = (): UseChatState & UseChatActions => {
     },
 
     onChatMessage: (message: ChatMessage) => {
-      // console.log(`📨 Chat message received: ${message.payload.content} in room ${message.payload.roomId}`);
+      // console.log(`Chat message received: ${message.payload.content} in room ${message.payload.roomId}`);
       
       setState(prev => {
         // Check if message already exists in the current state (ID 기반 중복 체크)
@@ -115,7 +115,7 @@ export const useChat = (): UseChatState & UseChatActions => {
         if (existingRoom) {
           // Check for exact duplicate (same ID)
           if (existingRoom.messages.some(msg => msg.id === message.id)) {
-            console.log(`🔄 Skipping duplicate message (same ID): ${message.id}`);
+            console.log(`Skipping duplicate message (same ID): ${message.id}`);
             return prev;
           }
         }
@@ -125,7 +125,7 @@ export const useChat = (): UseChatState & UseChatActions => {
         const isOwnMessage = message.payload.userId === useAuth.getState().user?.id;
         
         if (isCurrentRoom && !isOwnMessage) {
-          // console.log(`📖 Auto-marking message as read (current room): ${message.id}`);
+          // console.log(`Auto-marking message as read (current room): ${message.id}`);
           // send mark read request to backend
           if (websocketService.isConnected() && message.payload.roomId) {
             websocketService.markMessageAsRead(message.payload.roomId, message.timestamp);
@@ -136,7 +136,7 @@ export const useChat = (): UseChatState & UseChatActions => {
           ...prev,
           rooms: prev.rooms.map(room => {
             if (room.id === message.payload.roomId) {
-              // console.log(`📨 Adding message to room ${room.name}: "${message.payload.content}" (total: ${room.messages.length + 1})`);
+              // console.log(`Adding message to room ${room.name}: "${message.payload.content}" (total: ${room.messages.length + 1})`);
               return {
                 ...room,
                 messages: [...room.messages, message]
@@ -152,11 +152,11 @@ export const useChat = (): UseChatState & UseChatActions => {
 
 
     onRoomState: (message: RoomStateMessage) => {
-      // console.log(`🔄 onRoomState called for room: ${message.payload.room.name}`);
-      // console.log(`🔄 Previous messages: ${message.payload.previousMessages.length}`);
-      // console.log(`🔄 Unread messages: ${message.payload.unreadMessages.length}`);
-      // console.log(`🔄 Total messages: ${message.payload.previousMessages.length + message.payload.unreadMessages.length}`);
-      // console.log(`📊 Read state:`, message.payload.readState);
+      // console.log(`onRoomState called for room: ${message.payload.room.name}`);
+      // console.log(`Previous messages: ${message.payload.previousMessages.length}`);
+      // console.log(`Unread messages: ${message.payload.unreadMessages.length}`);
+      // console.log(`Total messages: ${message.payload.previousMessages.length + message.payload.unreadMessages.length}`);
+      // console.log(`Read state:`, message.payload.readState);
       
       const { room, previousMessages, unreadMessages, members, readState } = message.payload;
       const allMessages = [...previousMessages, ...unreadMessages];
@@ -166,7 +166,7 @@ export const useChat = (): UseChatState & UseChatActions => {
         
         // If room doesn't exist, add it
         if (!existingRoom) {
-          console.log(`🔄 Adding new room ${room.name} with ${allMessages.length} messages`);
+          console.log(`Adding new room ${room.name} with ${allMessages.length} messages`);
           return {
             ...prev,
             rooms: [...prev.rooms, {
@@ -194,7 +194,7 @@ export const useChat = (): UseChatState & UseChatActions => {
         
         // If room exists but has no messages, load them
         if (existingRoom.messages.length === 0) {
-          // console.log(`🔄 First time loading messages for room ${room.name}: ${allMessages.length} messages`);
+          // console.log(`First time loading messages for room ${room.name}: ${allMessages.length} messages`);
           return {
             ...prev,
             rooms: prev.rooms.map(r => 
@@ -223,7 +223,7 @@ export const useChat = (): UseChatState & UseChatActions => {
         }
         
         // need to replace the messages with the new messages other wise it will be duplicated everytime loading the room
-        // console.log(`🔄 Room ${room.name} already has ${existingRoom.messages.length} messages, replacing with new messages`);
+        // console.log(`Room ${room.name} already has ${existingRoom.messages.length} messages, replacing with new messages`);
         const newMessages = allMessages.map(msg => ({
           id: msg.id,
           timestamp: typeof msg.timestamp === 'string' ? new Date(msg.timestamp).getTime() : msg.timestamp,
@@ -254,7 +254,7 @@ export const useChat = (): UseChatState & UseChatActions => {
       });
     },
     onRoomJoined: (message: RoomJoinedMessage) => {
-      console.log('🏠 Room joined:', message);
+      console.log('Room joined:', message);
       const { roomId, newMemberName } = message.payload;
       
       setState(prev => ({
@@ -264,7 +264,7 @@ export const useChat = (): UseChatState & UseChatActions => {
             // check if the new member already exists in the room
             const memberExists = room.members.some(member => member.name === newMemberName);
             if (memberExists) {
-              console.log(`🔄 Member ${newMemberName} already exists in room ${roomId}`);
+              console.log(`Member ${newMemberName} already exists in room ${roomId}`);
               return room;
             }
             
@@ -291,7 +291,7 @@ export const useChat = (): UseChatState & UseChatActions => {
     
     onUnreadCount: (message: UnreadCountMessage) => {
       const { roomId, unreadCount } = message.payload;
-      // console.log(`📊 Unread count update: Room ${roomId} -> ${unreadCount}`);
+      // console.log(`Unread count update: Room ${roomId} -> ${unreadCount}`);
       setState(prev => ({
         ...prev,
         rooms: prev.rooms.map(room =>
@@ -307,14 +307,14 @@ export const useChat = (): UseChatState & UseChatActions => {
   useEffect(() => {
     // Only connect to WebSocket if user is logged in
     if (!user) {
-      // console.log('🔐 User not logged in, skipping WebSocket connection');
+      // console.log('User not logged in, skipping WebSocket connection');
       return;
     }
 
-    // console.log('🔗 useChat: Setting up WebSocket event handlers');
+    // console.log('useChat: Setting up WebSocket event handlers');
   
     if (websocketService.isConnected()) {
-      // console.log('🔗 useChat: WebSocket already connected, just registering handlers');
+      // console.log('useChat: WebSocket already connected, just registering handlers');
       websocketService.addEventHandlers(handlersRef.current);
       setState(prev => ({ ...prev, connectionStatus: 'connected' }));
     } else {
@@ -651,11 +651,11 @@ export const useChat = (): UseChatState & UseChatActions => {
   const setCurrentRoom = useCallback(async (roomId: string | null) => {
     if (roomId && roomId !== state.currentRoomId) {
       try {
-        // console.log(`🏠 Joining room ${roomId} with sync=true`);
-        // 🎯 사이드바든 어디든 항상 joinRoom으로 안전하게 처리
+        // console.log(`Joining room ${roomId} with sync=true`);
+        // 사이드바든 어디든 항상 joinRoom으로 안전하게 처리
         await joinRoom(roomId, true); 
         
-        // 🎯 이전 룸의 unreadCount 리셋 + 현재 룸 설정
+        // 이전 룸의 unreadCount 리셋 + 현재 룸 설정
         setState(prev => ({
           ...prev,
           rooms: prev.rooms.map(room =>
@@ -669,9 +669,9 @@ export const useChat = (): UseChatState & UseChatActions => {
         return;
       }
     } else {
-      // 🎯 룸을 떠날 때 (roomId가 null) 이전 룸의 unreadCount를 0으로 업데이트
+      // 룸을 떠날 때 (roomId가 null) 이전 룸의 unreadCount를 0으로 업데이트
       if (roomId === null && state.currentRoomId) {
-        console.log(`📊 Leaving room ${state.currentRoomId}, setting unreadCount to 0`);
+        console.log(`Leaving room ${state.currentRoomId}, setting unreadCount to 0`);
         setState(prev => ({
           ...prev,
           rooms: prev.rooms.map(room =>

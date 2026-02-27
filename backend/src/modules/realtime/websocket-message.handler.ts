@@ -25,15 +25,15 @@ export class WebSocketMessageHandler {
     broadcastToRoomCallback: (roomId: string, message: any) => void,
     socketId?: string // Add socketId for pong tracking
   ): Promise<void> {
-    // console.log(`🎯 WebSocketMessageHandler: Processing ${message.type} for user ${userId}`);
+    // console.log(`WebSocketMessageHandler: Processing ${message.type} for user ${userId}`);
     
     switch ((message as any).type) {
       case 'chat':
-        // console.log(`💬 Handling chat message for user ${userId}`);
+        // console.log(`Handling chat message for user ${userId}`);
         await this.handleChatMessage(em, message as ChatMessage, userId, userName, broadcastToRoomCallback);
         break;
       case 'room_state':
-        // console.log(`🔄 Handling room state request for user ${userId}`);
+        // console.log(`Handling room state request for user ${userId}`);
         if (message.type === 'room_state') {
           await this.handleRoomStateMessage(em, message as RoomStateMessage, userId, sendMessageCallback);
         } else {
@@ -41,15 +41,15 @@ export class WebSocketMessageHandler {
         }
         break;
       case 'mark_read':
-        // console.log(`📖 Handling mark read message for user ${userId}`);
+        // console.log(`Handling mark read message for user ${userId}`);
         await this.handleMarkReadMessage(em, message as MarkReadMessage, userId);
         break;
       case 'ping':
-        // console.log(`🏓 Handling ping message for user ${userId}`);
+        // console.log(`Handling ping message for user ${userId}`);
         await this.handlePingMessage(message as PingMessage, sendMessageCallback);
         break;
       case 'pong':
-        // console.log(`🏓 Handling pong message for user ${userId}`);
+        // console.log(`Handling pong message for user ${userId}`);
         await this.handlePongMessage(socketId);
         break;
 
@@ -67,8 +67,8 @@ export class WebSocketMessageHandler {
     userName: string,
     broadcastToRoomCallback: (roomId: string, message: any) => void
   ): Promise<void> {
-    // console.log(`💬 Processing chat message from ${userName} in room ${message.payload.roomId}`);
-    // console.log(`🔍 Chat message details:`, {
+    // console.log(`Processing chat message from ${userName} in room ${message.payload.roomId}`);
+    // console.log(`Chat message details:`, {
     //   userId,
     //   userName,
     //   roomId: message.payload.roomId,
@@ -78,16 +78,16 @@ export class WebSocketMessageHandler {
     
     const roomId = message.payload.roomId;
     if (!roomId) {
-      console.error('❌ Room ID is missing from chat message');
+      console.error('Room ID is missing from chat message');
       throw new Error('Room ID is required for chat messages');
     }
 
     // Check if user is in the room (database check)
     const isUserInRoom = await this.roomService.isUserInRoomDatabase(em, roomId, userId);
-    // console.log(`🔍 User ${userId} in room ${roomId}: ${isUserInRoom}`);
+    // console.log(`User ${userId} in room ${roomId}: ${isUserInRoom}`);
     
     if (!isUserInRoom) {
-      console.error(`❌ User ${userId} is not in room ${roomId}`);
+      console.error('User ${userId} is not in room ${roomId}');
       throw new Error('User is not a member of this room');
     }
 
@@ -104,16 +104,16 @@ export class WebSocketMessageHandler {
         message.payload.mimeType,
         message.payload.fileSize
       );
-      // console.log(`✅ Message saved to database:`, chatMessage.id);
+      // console.log(`Message saved to database:`, chatMessage.id);
 
       // Broadcast to room
       broadcastToRoomCallback(roomId, chatMessage);
-      // console.log(`✅ Message broadcasted to room ${roomId}`);
+      // console.log(`Message broadcasted to room ${roomId}`);
       const roomMembers = await this.roomService.getRoomMembers(em, roomId);
       for (const member of roomMembers) {
         if (member.userId !== userId) {
           const unreadCount = await this.syncService.getUnreadMessageCount(em, member.userId, roomId);
-          // console.log(`📊 Updated unread count for user ${member.userId} in room ${roomId}: ${unreadCount}`);
+          // console.log(`Updated unread count for user ${member.userId} in room ${roomId}: ${unreadCount}`);
           
           this.eventService.emitUnreadCountUpdate({
             roomId,
@@ -123,7 +123,7 @@ export class WebSocketMessageHandler {
         }
       }
     } catch (error) {
-      console.error(`❌ Error saving/broadcasting chat message:`, error);
+      console.error(`Error saving/broadcasting chat message:`, error);
       throw error;
     }
   }
@@ -135,28 +135,28 @@ export class WebSocketMessageHandler {
     sendMessageCallback: (message: RoomStateMessage) => void
   ): Promise<void> {
     const roomId = message.payload.room.id;
-    // console.log(`🔄 Processing sync request for room ${roomId} from user ${userId}`);
+    // console.log(`Processing sync request for room ${roomId} from user ${userId}`);
     
     if (!roomId) {
-      console.error('❌ Room ID is missing from sync message');
+      console.error('Room ID is missing from sync message');
       throw new Error('Room ID is required for sync messages');
     }
 
     // Get room data
     const room = await this.roomService.getRoom(em, roomId);
     if (!room) {
-      console.error(`❌ Room ${roomId} not found`);
+      console.error(`Room ${roomId} not found`);
       throw new Error(`Room ${roomId} not found`);
     }
-    // console.log(`✅ Found room: ${room.name} (${room.id})`);
+    // console.log(`Found room: ${room.name} (${room.id})`);
 
     // Get room members
     const roomMembers = await this.roomService.getRoomMembers(em, roomId);
-    // console.log(`✅ Found ${roomMembers.length} members in room ${room.name}`);
+    // console.log(`Found ${roomMembers.length} members in room ${room.name}`);
     
     // Get messages and sync data
     const roomData = await this.syncService.syncRoomMessages(em, userId, roomId);
-    // console.log(`✅ Sync data for room ${room.name}:`, {
+    // console.log(`Sync data for room ${room.name}:`, {
     //   previousMessages: roomData.previousMessages.length,
     //   unreadMessages: roomData.unreadMessages.length,
     //   lastReadTimestamp: roomData.lastReadTimestamp
@@ -168,12 +168,12 @@ export class WebSocketMessageHandler {
     
     if (allMessagesForRead.length > 0) {
       const latestMessage = allMessagesForRead[allMessagesForRead.length - 1];
-      // console.log(`📖 Auto-marking messages as read up to timestamp: ${latestMessage.timestamp}`);
+      // console.log(`Auto-marking messages as read up to timestamp: ${latestMessage.timestamp}`);
       await this.syncService.markMessagesAsRead(em, userId, roomId, latestMessage.timestamp);
       
       // calculate the actual unread count
       actualUnreadCount = await this.syncService.getUnreadMessageCount(em, userId, roomId);
-      // console.log(`📊 Actual unread count after marking as read: ${actualUnreadCount}`);
+      // console.log(`Actual unread count after marking as read: ${actualUnreadCount}`);
     }
 
     // Create room state message with accurate unread count
@@ -225,7 +225,7 @@ export class WebSocketMessageHandler {
       },
       timestamp: Date.now()
     };
-    // console.log(`🔄 Sending room state message for room ${room.name}:`, {
+    // console.log(`Sending room state message for room ${room.name}:`, {
     //   roomId: room.id,
     //   totalMessages: roomData.previousMessages.length + roomData.unreadMessages.length,
     //   members: roomMembers.length
@@ -239,21 +239,21 @@ export class WebSocketMessageHandler {
     userId: string
   ): Promise<void> {
     const { roomId, lastReadTimestamp } = message.payload;
-    // console.log(`📖 Processing mark read request for room ${roomId} from user ${userId}, timestamp: ${lastReadTimestamp}`);
+    // console.log(`Processing mark read request for room ${roomId} from user ${userId}, timestamp: ${lastReadTimestamp}`);
     
     if (!roomId) {
-      console.error('❌ Room ID is missing from mark read message');
+      console.error('Room ID is missing from mark read message');
       throw new Error('Room ID is required for mark read messages');
     }
 
     try {
       // Mark messages as read up to the specified timestamp
       await this.syncService.markMessagesAsRead(em, userId, roomId, lastReadTimestamp);
-      // console.log(`✅ Messages marked as read for user ${userId} in room ${roomId} up to timestamp ${lastReadTimestamp}`);
+      // console.log(`Messages marked as read for user ${userId} in room ${roomId} up to timestamp ${lastReadTimestamp}`);
       
       // Get updated unread count and emit to user
       const unreadCount = await this.syncService.getUnreadMessageCount(em, userId, roomId);
-      // console.log(`📊 Updated unread count for user ${userId} in room ${roomId}: ${unreadCount}`);
+      // console.log(`Updated unread count for user ${userId} in room ${roomId}: ${unreadCount}`);
       
       this.eventService.emitUnreadCountUpdate({
         roomId,
@@ -270,10 +270,10 @@ export class WebSocketMessageHandler {
     message: PingMessage, 
     sendMessageCallback: (message: any) => void
   ): Promise<void> {
-    // console.log(`🏓 Creating pong response for ping message:`, message.id);
+    // console.log(`Creating pong response for ping message:`, message.id);
     // Create pong response using existing timestamp
     const pongMessage = this.messageService.createPongMessage(message.timestamp);
-    // console.log(`🏓 Sending pong response:`, pongMessage);
+    // console.log(`Sending pong response:`, pongMessage);
     sendMessageCallback(pongMessage);
   }
 

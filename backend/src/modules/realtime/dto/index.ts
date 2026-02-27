@@ -33,7 +33,7 @@ import {
   type FriendPendingRequestPayloadSchema
 } from './friend.schema';
 
-// 🎯 WebSocket 클라이언트 → 서버 메시지 스키마 (실제로 받는 것들만)
+// WebSocket 클라이언트 → 서버 메시지 스키마 (실제로 받는 것들만)
 export const messageSchema = Type.Union([
   chatMessageSchema,        // 실시간 채팅
   roomStateMessageSchema,   // 룸 상태 동기화 요청
@@ -44,7 +44,7 @@ export const messageSchema = Type.Union([
   errorMessageSchema,       // 에러 메시지
 ]);
 
-// 🎯 서버 → 클라이언트 알림 스키마 (EventListenerService에서 사용)
+// 서버 → 클라이언트 알림 스키마 (EventListenerService에서 사용)
 export const notificationSchema = Type.Union([
   friendRequestSchema,      // 친구 요청 알림
   friendRequestResponseSchema, // 친구 요청 응답 알림
