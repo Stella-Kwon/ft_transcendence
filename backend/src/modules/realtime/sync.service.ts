@@ -35,7 +35,7 @@ export class SyncService {
 
         if (unreadCount > 0) {
           if (!this.eventService) {
-            console.warn(`[${userId}] EventService not available for unread count update`);
+            // console.warn(`[${userId}] EventService not available for unread count update`);
             return;
           }
           this.eventService.emitUnreadCountUpdate({

@@ -20,15 +20,15 @@ export class RoomService {
   async createRoom(em: EntityManager, name: string, masterId: string, description?: string, isPrivate = false, maxUsers = 50): Promise<Room> {
     // Check if user already has a room with the same name (only among user's rooms)
     const userRooms = await this.getUserRooms(em, masterId);
-    console.log(`[createRoom] User ${masterId} has ${userRooms.length} rooms:`, userRooms.map(r => r.name));
+    // console.log(`[createRoom] User ${masterId} has ${userRooms.length} rooms:`, userRooms.map(r => r.name));
     
     const existingUserRoom = userRooms.find(room => room.name === name);
     if (existingUserRoom) {
-      console.log(`[createRoom] Duplicate room name found: "${name}" for user ${masterId}`);
+      // console.log(`[createRoom] Duplicate room name found: "${name}" for user ${masterId}`);
       throw new BadRequestException(`You already have a room named "${name}". Please choose a different name.`);
     }
 
-    console.log(`[createRoom] Creating room "${name}" for user ${masterId}`);
+    // console.log(`[createRoom] Creating room "${name}" for user ${masterId}`);
 
     const room = em.create(Room, {
       id: randomUUID(),
@@ -46,8 +46,8 @@ export class RoomService {
     // Add master to room members after room is persisted
     const user = await em.findOne(User, { id: masterId });
     if (user) {
-      await this.addUsersToRoomDatabase(em, room.id, [user.name], masterId, user.name);
       this.addUserToRoomInMemory(masterId, room.id);
+      await this.addUsersToRoomDatabase(em, room.id, [user.name], masterId, user.name);
     }
     
     // Return room with populated members for accurate memberCount
@@ -161,16 +161,16 @@ export class RoomService {
       throw new NotFoundException(`Room ${roomId} not found`);
     }
 
-    console.log(`Room found: ${room.name}, current members: ${room.members.length}`);
+    // console.log(`Room found: ${room.name}, current members: ${room.members.length}`);
     
     const member = room.members.getItems().find(member => member.userId === userId);
     if (!member) {
-      console.log(`User ${userId} not found in room ${roomId} members`);
-      console.log(`Current members: ${room.members.getItems().map(m => `${m.name}(${m.userId})`).join(', ')}`);
+      // console.log(`User ${userId} not found in room ${roomId} members`);
+      // console.log(`Current members: ${room.members.getItems().map(m => `${m.name}(${m.userId})`).join(', ')}`);
       throw new NotFoundException(`User ${userId} not found in room ${roomId}`);
     }
 
-    console.log(`Found member ${member.name} (${member.userId}), removing...`);
+    // console.log(`Found member ${member.name} (${member.userId}), removing...`);
     
     room.members.remove(member);
     room.updatedAt = new Date();
@@ -192,7 +192,7 @@ export class RoomService {
         await em.removeAndFlush(room);
         //rm from our Map
         this.usersInRoom.delete(roomId);
-        console.log(`Empty room ${room.name} (${roomId}) deleted successfully`);
+        // console.log(`Empty room ${room.name} (${roomId}) deleted successfully`);
         return true;
       }
       
@@ -210,7 +210,7 @@ export class RoomService {
       await em.nativeDelete('UserReadMessage', { room: roomId });
       // 2. rm all ChatMessage
       await em.nativeDelete('ChatMessage', { roomId });
-      console.log(`Cleaned up all data (messages, read states) for room ${roomId}`);
+      // console.log(`Cleaned up all data (messages, read states) for room ${roomId}`);
     } catch (error) {
       console.error('Error cleaning up room data:', error);
     }
@@ -218,11 +218,10 @@ export class RoomService {
 
   // Leave room (both memory and database)
   async leaveRoom(em: EntityManager, userId: string, roomId: string): Promise<void> {
-    // Remove from memory (WebSocket)
-    this.removeUserFromRoom(userId, roomId);
-    
     // Remove from database (throws exception if fails)
     await this.removeUserFromRoomDatabase(em, roomId, userId);
+    // Remove from memory (WebSocket)
+    this.removeUserFromRoom(userId, roomId);
   }
 
   // Get rooms that a user has joined
@@ -285,7 +284,7 @@ export class RoomService {
     return this.getUsersInRoom(roomId);
   }
 
-  // WebSocket용 - 메모리에서 사용자의 룸 목록 반환 (제거하지 않음)
+  //get all the rooms that the user in
   getUserRoomsFromMemory(userId: string): string[] {
     const userRooms = this.roomsInUser.get(userId);
     return userRooms ? Array.from(userRooms) : [];
