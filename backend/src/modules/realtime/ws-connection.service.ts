@@ -2,7 +2,6 @@ import { FastifyRequest } from "fastify";
 import { EntityManager } from "@mikro-orm/core";
 import { randomUUID } from 'crypto';
 import { WebSocket } from 'ws';
-import { ConnectionService } from "./connection.service";
 import { MessageService } from "./message.service";
 import { EventService } from "./event.service";
 import { SyncService } from "./sync.service";
@@ -11,13 +10,14 @@ import { SyncService } from "./sync.service";
 export interface WebSocketConnection {
   socketId: string;
   userId: string;
+  email: string;
   name: string;
   connectionId: string; //devices connection per user
   socket: any; // WebSocket instance
   entityManager: EntityManager; // Connection-specific EntityManager for each connection
 }
 
-export class WebSocketConnectionManager {
+export class WsConnectionService {
   private connections = new Map<string, WebSocketConnection>(); // socketId -> WebSocketConnection
   private userWebConnection = new Map<string, Set<WebSocketConnection>>(); // userId -> Set<WebSocketConnection>
   private pingIntervals = new Map<string, NodeJS.Timeout>(); // socketId -> pingInterval
@@ -25,7 +25,6 @@ export class WebSocketConnectionManager {
   private messageBuffer = new Map<string, any[]>(); // userId -> buffered messages
 
   constructor(
-    private connectionService: ConnectionService,
     private messageService: MessageService,
     private eventService: EventService,
     private syncService: SyncService
@@ -53,10 +52,11 @@ export class WebSocketConnectionManager {
     const wsConnection: WebSocketConnection = {
       socketId,
       userId,
+      email,
       name,
       connectionId,
       socket: connection.socket,
-      entityManager: request.entityManager
+      entityManager: request.entityManager,
     };
 
     // Store connection
@@ -65,9 +65,6 @@ export class WebSocketConnectionManager {
       this.userWebConnection.set(userId, new Set());
     }
     this.userWebConnection.get(userId)!.add(wsConnection);
-
-    // Register with connection service
-    this.connectionService.createConnection(connectionId, socketId, email, userId, name);
 
     // Emit online status
     this.eventService.emitUserStatusUpdate({ userId, isOnline: true });
@@ -80,7 +77,7 @@ export class WebSocketConnectionManager {
 
   private async initializeConnection(wsConnection: WebSocketConnection) {
     if (wsConnection.entityManager) {
-      await this.flushBufferedMessages(wsConnection.userId);
+      await this.flushBufferedMessages(wsConnection.userId); // better doing in data-base for server crash reason. fix for later
       await this.restoreUserSession(wsConnection);
     } else {
       await this.waitForEntityManager(wsConnection);
@@ -101,7 +98,7 @@ export class WebSocketConnectionManager {
     }
   }
 
-  // Wait for EntityManager to become available
+  // Wait for EntityManager to become available -
   private async waitForEntityManager(wsConnection: WebSocketConnection) {
     console.error('EntityManager is not available, waiting for it to become available...');
 
@@ -143,10 +140,8 @@ export class WebSocketConnectionManager {
 
       if (timeSinceLastPing > 60000) {
         pendingPing.missedPongs++;
-        // console.warn(`Missed pong from ${wsConnection.userId} (${pendingPing.missedPongs}/3)`);
 
         if (pendingPing.missedPongs >= 3) {
-          // console.error(`Connection ${socketId} unresponsive after 3 missed pongs, closing connection`);
           this.handleConnectionClose(socketId);
           return;
         }
@@ -185,7 +180,6 @@ export class WebSocketConnectionManager {
 
     // Remove from connection tracking BEFORE emitting status
     // so isUserOnline() returns false when the event listener checks it
-    this.connectionService.removeConnection(wsConnection.connectionId);
     this.connections.delete(socketId);
     const userConns = this.userWebConnection.get(wsConnection.userId);
     if (userConns) {
@@ -206,7 +200,7 @@ export class WebSocketConnectionManager {
     }
   }
 
-  //no async due to prevent mixing up the sequence in buufferMessage
+  //no async due to prevent mixing up the sequence in bufferMessage
   sendMessage(wsConnection: WebSocketConnection, message: any) {
     try {
       if (wsConnection.socket.readyState === WebSocket.OPEN) {
@@ -268,13 +262,27 @@ export class WebSocketConnectionManager {
   getConnection(socketId: string): WebSocketConnection | undefined {
     return this.connections.get(socketId);
   }
-  
-//all-connections
+
   getAllConnections(): WebSocketConnection[] {
     return Array.from(this.connections.values());
   }
 
   getUserConnections(userId: string): WebSocketConnection[] {
     return Array.from(this.userWebConnection.get(userId) ?? new Set());
+  }
+
+  isUserOnline(userId: string): boolean {
+    return this.userWebConnection.has(userId);
+  }
+
+  getConnectionByUserId(userId: string): WebSocketConnection | undefined {
+    const userConns = this.userWebConnection.get(userId);
+    if (!userConns || userConns.size === 0) return undefined;
+    return userConns.values().next().value;
+  }
+
+  getOnlineUsers(): WebSocketConnection[] {
+    return Array.from(this.userWebConnection.values())
+      .map(conns => conns.values().next().value!);
   }
 }

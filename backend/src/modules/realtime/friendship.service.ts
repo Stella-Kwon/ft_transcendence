@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { User } from "../user/entities/user.entity";
 import { Friendship } from "./entities/friendship.entity";
 import { FriendRequest } from "./entities/friendship.entity";
-import { ConnectionService } from "./connection.service";
+import { WsConnectionService } from "./ws-connection.service";
 import { EventService } from "./event.service";
 import { NotFoundException } from "../../common/exceptions/NotFoundException";
 import { BadRequestException } from "../../common/exceptions/BadRequestException";
@@ -11,7 +11,7 @@ import { FriendListResponseSchema, FriendPendingRequestPayloadSchema } from "./d
 
 export class FriendshipService {
   constructor(
-    private connectionService: ConnectionService,
+    private wsConnectionService: WsConnectionService,
     private eventService: EventService
   ) {}
 
@@ -275,8 +275,7 @@ export class FriendshipService {
 
     const friendslist = friendships.map(friendship => {
       const friend = friendship.friend;
-      const isOnline = this.connectionService.isUserOnline(friend.id);
-      const userConnection = this.connectionService.getConnectionByUserId(friend.id);
+      const isOnline = this.wsConnectionService.isUserOnline(friend.id);
 
       return {
         id: friend.id,
@@ -284,7 +283,7 @@ export class FriendshipService {
         email: friend.email,
         avatarUrl: friend.avatarUrl || '',
         isOnline,
-        lastSeen: userConnection ? new Date(userConnection.connectedAt).getTime() : Date.now()
+        lastSeen: undefined
       };
     });
 
@@ -318,7 +317,7 @@ export class FriendshipService {
         email: friend.email,
         avatarUrl: friend.avatarUrl || '',
         isOnline: false,
-        lastSeen: Date.now()
+        lastSeen: undefined
       };
     });
 

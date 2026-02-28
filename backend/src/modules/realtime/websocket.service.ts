@@ -1,42 +1,32 @@
 import { FastifyPluginAsync, FastifyInstance, FastifyPluginOptions } from "fastify";
 import fastifyWebsocket from "@fastify/websocket";
 import { RoomService } from "./room.service";
-import { ConnectionService } from "./connection.service";
 import { MessageService } from "./message.service";
 import { EventService } from "./event.service";
 import { SyncService } from "./sync.service";
 import { EventListenerService } from "./event-listener.service";
-import { WebSocketConnectionManager, WebSocketConnection } from "./websocket-connection.manager";
+import { WsConnectionService, WebSocketConnection } from "./ws-connection.service";
 import { WebSocketMessageHandler } from "./websocket-message.handler";
 import { WebSocketErrorHandler } from "./websocket-error-handler";
 import { AnyMessage } from "./dto";
 
 export class WebSocketService {
-  private connectionManager: WebSocketConnectionManager;
   private messageHandler: WebSocketMessageHandler;
 
   constructor(
     private roomService: RoomService,
-    private connectionService: ConnectionService,
+    private wsConnectionService: WsConnectionService,
     private messageService: MessageService,
     private eventService: EventService,
     private syncService: SyncService,
     private eventListenerService: EventListenerService
   ) {
-    this.connectionManager = new WebSocketConnectionManager(
-      this.connectionService,
-      this.messageService,
-      this.eventService,
-      this.syncService
-    );
-
     this.messageHandler = new WebSocketMessageHandler(
       this.messageService,
       this.syncService,
       this.roomService,
       this.eventService,
-      this.connectionService,
-      this.connectionManager
+      this.wsConnectionService
     );
 
     this.setupEventListeners();
@@ -84,7 +74,7 @@ export class WebSocketService {
       const { user } = authResult;
       request.user = user;
 
-      const wsConnection = await this.connectionManager.createConnection(connection, request);
+      const wsConnection = await this.wsConnectionService.createConnection(connection, request);
 
       if (!wsConnection) {
         console.error('Failed to create WebSocket connection');
@@ -96,12 +86,11 @@ export class WebSocketService {
       });
 
       connection.socket.on('close', async () => {
-        await this.connectionManager.handleConnectionClose(wsConnection.socketId);
+        await this.wsConnectionService.handleConnectionClose(wsConnection.socketId);
       });
 
       connection.socket.on('error', async (error: Error) => {
-        // console.error(`WebSocket error for ${wsConnection.socketId}:`, error);
-        await this.connectionManager.handleConnectionClose(wsConnection.socketId);
+        await this.wsConnectionService.handleConnectionClose(wsConnection.socketId);
       });
     } catch (error) {
       console.error('WebSocket connection error:', error);
@@ -204,22 +193,19 @@ export class WebSocketService {
   }
 
   private sendMessage(wsConnection: WebSocketConnection, message: AnyMessage) {
-    this.connectionManager.sendMessage(wsConnection, message);
+    this.wsConnectionService.sendMessage(wsConnection, message);
   }
 
   async sendToUser(userId: string, message: AnyMessage): Promise<void> {
-    const connections = this.connectionService.getUserConnections(userId);
+    const connections = this.wsConnectionService.getUserConnections(userId);
 
     if (connections.length === 0) {
-      this.connectionManager.bufferMessage(userId, message);
+      this.wsConnectionService.bufferMessage(userId, message);
       return;
     }
 
-    for (const connection of connections) {
-      const wsConnection = this.connectionManager.getConnection(connection.socketId);
-      if (wsConnection) {
-        this.connectionManager.sendMessage(wsConnection, message);
-      }
+    for (const wsConnection of connections) {
+      this.wsConnectionService.sendMessage(wsConnection, message);
     }
   }
 
@@ -232,7 +218,7 @@ export class WebSocketService {
   }
 
   broadcastToAll(message: AnyMessage) {
-    const allConnections = this.connectionManager.getAllConnections();
+    const allConnections = this.wsConnectionService.getAllConnections();
     for (const wsConnection of allConnections) {
       this.sendMessage(wsConnection, message);
     }

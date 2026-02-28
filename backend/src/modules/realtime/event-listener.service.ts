@@ -1,5 +1,5 @@
 import { EventService } from './event.service';
-import { ConnectionService } from './connection.service';
+import { WsConnectionService } from './ws-connection.service';
 import { FriendshipService } from './friendship.service';
 import { NotificationMessage} from './dto';
 import { WebSocketErrorHandler } from './websocket-error-handler';
@@ -8,7 +8,7 @@ import { UnreadCountMessage } from './dto/sync.schema';
 export class EventListenerService {
   constructor(
     private eventService: EventService,
-    private connectionService: ConnectionService,
+    private wsConnectionService: WsConnectionService,
     private friendshipService: FriendshipService,
     private orm: any // MikroORM instance
   ) {}
@@ -149,7 +149,7 @@ export class EventListenerService {
 
             const affectedUsers = [data.requesterId, data.addresseeId];
             for (const userId of affectedUsers) {
-              if (this.connectionService.isUserOnline(userId)) {
+              if (this.wsConnectionService.isUserOnline(userId)) {
                 try {
                   const errorMessage = WebSocketErrorHandler.createErrorMessage(
                     'FRIEND_LIST_UPDATE_ERROR',
@@ -195,7 +195,7 @@ export class EventListenerService {
 
         const targetUsers = data.targetUserIds || [];
         for (const userId of targetUsers) {
-          if (this.connectionService.isUserOnline(userId)) {
+          if (this.wsConnectionService.isUserOnline(userId)) {
             try {
               const errorMessage = WebSocketErrorHandler.createErrorMessage(
                 'FRIEND_LIST_UPDATE_ERROR',
@@ -214,7 +214,7 @@ export class EventListenerService {
     // 7. unread count update event listener
     this.eventService.onUnreadCountUpdate(async (data) => {
       try {
-        if (this.connectionService.isUserOnline(data.userId)) {
+        if (this.wsConnectionService.isUserOnline(data.userId)) {
           const unreadCountMessage: UnreadCountMessage = {
             id: `unread_${Date.now()}`,
             type: 'unread_count',
@@ -239,7 +239,7 @@ export class EventListenerService {
     updateReason: 'friend_request_accepted' | 'friend_blocked' | 'friend_unblocked' | 'friend_removed',
     sendToUser: (userId: string, message: any) => Promise<void>
   ): Promise<void> {
-    const onlineUsers = userIds.filter(userId => this.connectionService.isUserOnline(userId));
+    const onlineUsers = userIds.filter(userId => this.wsConnectionService.isUserOnline(userId));
 
     await Promise.allSettled(
       onlineUsers.map(async (userId) => {

@@ -37,7 +37,7 @@ export const friendRequestSchema = Type.Intersect([
 
 // response to friend request
 export const friendRequestResponsePayloadSchema = Type.Object({
-  requestId: Type.String(),  // ← 추가!
+  requestId: Type.String(),
   requesterId: Type.String(),
   requesterName: Type.String(),
   addresseeId: Type.String(),
@@ -67,7 +67,7 @@ export const friendListResponsePayloadSchema = Type.Object({
     email: Type.String(),
     avatarUrl: Type.String(),
     isOnline: Type.Boolean(),
-    lastSeen: Type.Number()
+    lastSeen: Type.Optional(Type.Number())
   })),
   totalCount: Type.Number(),
   updateReason: Type.Optional(Type.Union([
@@ -76,7 +76,7 @@ export const friendListResponsePayloadSchema = Type.Object({
     Type.Literal('friend_unblocked'),
     Type.Literal('friend_removed')
   ])),
-  targetUserIds: Type.Optional(Type.Array(Type.String())) // 이벤트에서만 사용, API 응답에서는 생략
+  targetUserIds: Type.Optional(Type.Array(Type.String()))//use in eventlistener
 });
 
 export const friendListResponseSchema = Type.Intersect([

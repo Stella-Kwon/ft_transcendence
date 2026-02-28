@@ -385,7 +385,7 @@ fastify.post("/rooms/:roomId/invite", {
       userId: member.userId,
       name: member.name,
       joinedAt: member.joinedAt?.getTime() || Date.now(),
-      isOnline: fastify.connectionService.isUserOnline(member.userId) // 동적 계산
+      isOnline: fastify.wsConnectionService.isUserOnline(member.userId)
     }));
 
     const onlineCount = members.filter(member => member.isOnline).length;

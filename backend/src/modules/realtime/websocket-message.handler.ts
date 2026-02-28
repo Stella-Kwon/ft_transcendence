@@ -12,8 +12,7 @@ export class WebSocketMessageHandler {
     private readonly syncService: SyncService,
     private readonly roomService: RoomService,
     private readonly eventService: EventService,
-    private readonly connectionService?: any,
-    private readonly connectionManager?: any 
+    private readonly wsConnectionService?: any
   ) {}
 
   async handleMessage(
@@ -215,7 +214,7 @@ export class WebSocketMessageHandler {
           userId: member.userId,
           name: member.name,
           joinedAt: member.joinedAt?.getTime() || Date.now(),
-          isOnline: this.connectionService?.isUserOnline(member.userId) || false
+          isOnline: this.wsConnectionService?.isUserOnline(member.userId) || false
         })),
         readState: {
           lastReadTimestamp: roomData.lastReadTimestamp,
@@ -279,8 +278,8 @@ export class WebSocketMessageHandler {
 
   private async handlePongMessage(socketId?: string): Promise<void> {
     // Handle pong for latency tracking using ConnectionManager
-    if (socketId && this.connectionManager) {
-      this.connectionManager.handlePongReceived(socketId);
+    if (socketId && this.wsConnectionService) {
+      this.wsConnectionService.handlePongReceived(socketId);
     }
   }
 
