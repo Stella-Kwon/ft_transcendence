@@ -81,8 +81,8 @@ export class WebSocketMessageHandler {
       throw new Error('Room ID is required for chat messages');
     }
 
-    // Check if user is in the room (database check)
-    const isUserInRoom = await this.roomService.isUserInRoomDatabase(em, roomId, userId);
+    // Check if user is in the room (memory check)
+    const isUserInRoom = this.roomService.isUserInRoomMemory(roomId, userId);
     // console.log(`User ${userId} in room ${roomId}: ${isUserInRoom}`);
     
     if (!isUserInRoom) {
@@ -108,15 +108,15 @@ export class WebSocketMessageHandler {
       // Broadcast to room
       await broadcastToRoomCallback(roomId, chatMessage);
       // console.log(`Message broadcasted to room ${roomId}`);
-      const roomMembers = await this.roomService.getRoomMembers(em, roomId);
-      for (const member of roomMembers) {
-        if (member.userId !== userId) {
-          const unreadCount = await this.syncService.getUnreadMessageCount(em, member.userId, roomId);
-          // console.log(`Updated unread count for user ${member.userId} in room ${roomId}: ${unreadCount}`);
-          
+      const memberIds = this.roomService.getRoomMembersFromMemory(roomId);
+      for (const memberId of memberIds) {
+        if (memberId !== userId) {
+          const unreadCount = await this.syncService.getUnreadMessageCount(em, memberId, roomId);
+          // console.log(`Updated unread count for user ${memberId} in room ${roomId}: ${unreadCount}`);
+
           this.eventService.emitUnreadCountUpdate({
             roomId,
-            userId: member.userId,
+            userId: memberId,
             unreadCount
           });
         }
