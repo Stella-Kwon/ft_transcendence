@@ -7,8 +7,6 @@ import {
   roomCreationRequestSchema,
   roomMemberDtoSchema,
   roomInvitationRequestSchema,
-  LeaveRoomMessage,
-  RoomJoinedMessage
 } from './dto/room.schema';
 import { chatMessageSchema } from './dto/chat.schema';
 
@@ -28,7 +26,7 @@ declare module 'fastify' {
     eventService: EventService;
   }
 }
-export const roomController: FastifyPluginAsync = async (fastify, opts) => {
+export const roomController: FastifyPluginAsync = async (fastify) => {
   // Create a new room
   fastify.post("/rooms", {
     schema: {
@@ -110,62 +108,62 @@ export const roomController: FastifyPluginAsync = async (fastify, opts) => {
     return reply.send(roomResponse);
   });
 
-  // Join room with message sync
-  fastify.post("/rooms/:roomId/join", {
-    schema: {
-      params: Type.Object({
-        roomId: Type.String()
-      }),
-              response: {
-          200: Type.Object({
-            room: roomCreatedPayloadSchema,
-            messages: Type.Array(chatMessageSchema),
-            unreadCount: Type.Number()
-          }),
-          401: ErrorResponseDtoSchema,
-          404: ErrorResponseDtoSchema
-        }
-    }
-  }, async (request, reply) => {
-    const userId = (request.user as any)?.id;
-    if (!userId) {
-      throw new UnauthorizedException("Authentication required");
-    }
+  // // Join room with message sync -> websocket will handle it
+  // fastify.post("/rooms/:roomId/join", {
+  //   schema: {
+  //     params: Type.Object({
+  //       roomId: Type.String()
+  //     }),
+  //             response: {
+  //         200: Type.Object({
+  //           room: roomCreatedPayloadSchema,
+  //           messages: Type.Array(chatMessageSchema),
+  //           unreadCount: Type.Number()
+  //         }),
+  //         401: ErrorResponseDtoSchema,
+  //         404: ErrorResponseDtoSchema
+  //       }
+  //   }
+  // }, async (request, reply) => {
+  //   const userId = (request.user as any)?.id;
+  //   if (!userId) {
+  //     throw new UnauthorizedException("Authentication required");
+  //   }
 
-    const { roomId } = request.params as { roomId: string };
-    const em = request.entityManager.fork();
+  //   const { roomId } = request.params as { roomId: string };
+  //   const em = request.entityManager.fork();
 
-    const isInRoom = await fastify.roomService.isUserInRoomDatabase(em, roomId, userId);
-    if (!isInRoom) {
-      throw new ForbiddenException("You are not a member of this room. Please request an invitation first.");
-    }
+  //   const isInRoom = await fastify.roomService.isUserInRoomDatabase(em, roomId, userId);
+  //   if (!isInRoom) {
+  //     throw new ForbiddenException("You are not a member of this room. Please request an invitation first.");
+  //   }
 
-    // Sync room messages
-    const roomData = await fastify.syncService.syncRoomMessages(em, userId, roomId);
+  //   // Sync room messages
+  //   const roomData = await fastify.syncService.syncRoomMessages(em, userId, roomId);
     
-    const room = await fastify.roomService.getRoom(em, roomId);
-    if (!room) {
-      throw new NotFoundException("Room not found");
-    }
+  //   const room = await fastify.roomService.getRoom(em, roomId);
+  //   if (!room) {
+  //     throw new NotFoundException("Room not found");
+  //   }
     
-    const roomResponse: RoomCreatedPayload = {
-      id: room.id,
-      name: room.name,
-      masterId: room.masterId,
-      description: room.description,
-      isPrivate: room.isPrivate,
-      memberCount: room.members?.length || 0,
-      maxUsers: room.maxUsers,
-      createdAt: room.createdAt.getTime(),
-      updatedAt: room.updatedAt.getTime()
-    };
+  //   const roomResponse: RoomCreatedPayload = {
+  //     id: room.id,
+  //     name: room.name,
+  //     masterId: room.masterId,
+  //     description: room.description,
+  //     isPrivate: room.isPrivate,
+  //     memberCount: room.members?.length || 0,
+  //     maxUsers: room.maxUsers,
+  //     createdAt: room.createdAt.getTime(),
+  //     updatedAt: room.updatedAt.getTime()
+  //   };
 
-    return reply.send({
-      room: roomResponse,
-      messages: [...roomData.previousMessages, ...roomData.unreadMessages],
-      unreadCount: roomData.unreadMessages.length
-    });
-  });
+  //   return reply.send({
+  //     room: roomResponse,
+  //     messages: [...roomData.previousMessages, ...roomData.unreadMessages],
+  //     unreadCount: roomData.unreadMessages.length
+  //   });
+  // });
 
 //get a roomlist
 fastify.get("/rooms/:userId/roomlist", {
@@ -387,8 +385,6 @@ fastify.post("/rooms/:roomId/invite", {
       joinedAt: member.joinedAt?.getTime() || Date.now(),
       isOnline: fastify.wsConnectionService.isUserOnline(member.userId)
     }));
-
-    const onlineCount = members.filter(member => member.isOnline).length;
 
     return reply.send(members);
   });

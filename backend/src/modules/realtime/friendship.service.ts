@@ -34,10 +34,9 @@ export class FriendshipService {
 
     // Check if they are already friends
     const existingFriendship = await em.findOne(Friendship, {
-      $or: [
-        { user: requester, friend: addressee, status: 'active' },
-        { user: addressee, friend: requester, status: 'active' }
-      ]
+      user: requester,
+      friend: addressee,
+      status: 'active'
     });
 
     if (existingFriendship) {
@@ -266,6 +265,7 @@ export class FriendshipService {
     }));
   }
 
+  // could have better having friendslist as chache 
   // Get user's friends list with online status
   async getFriendsList(em: EntityManager, userId: string, updateReason?: 'friend_request_accepted' | 'friend_blocked' | 'friend_unblocked' | 'friend_removed'): Promise<FriendListResponseSchema> {
     const friendships = await em.find(Friendship, {
@@ -276,7 +276,6 @@ export class FriendshipService {
     const friendslist = friendships.map(friendship => {
       const friend = friendship.friend;
       const isOnline = this.wsConnectionService.isUserOnline(friend.id);
-
       return {
         id: friend.id,
         name: friend.name,
@@ -337,19 +336,23 @@ export class FriendshipService {
 
   // Remove friend
   async removeFriend(em: EntityManager, userId: string, friendId: string): Promise<void> {
-    const friendships = await em.find(Friendship, {
-      $or: [
-        { user: { id: userId }, friend: { id: friendId } },
-        { user: { id: friendId }, friend: { id: userId } }
-      ],
+    const friendship1 = await em.findOne(Friendship, {
+      user: { id: userId },
+      friend: { id: friendId },
       status: 'active'
     });
 
-    if (friendships.length === 0) {
+    const friendship2 = await em.findOne(Friendship, {
+      user: { id: friendId },
+      friend: { id: userId },
+      status: 'active'
+    });
+
+    if (!friendship1 || !friendship2) {
       throw new Error('Friendship not found');
     }
 
-    await em.removeAndFlush(friendships);
+    await em.removeAndFlush([friendship1, friendship2]);
 
     // Also remove any friend requests between these users
     const friendRequests = await em.find(FriendRequest, {

@@ -208,7 +208,7 @@ export class RoomService {
   async leaveRoom(em: EntityManager, userId: string, roomId: string): Promise<void> {
     // Remove from database (throws exception if fails)
     await this.removeUserFromRoomDatabase(em, roomId, userId);
-    // Remove from memory (WebSocket)
+    // Remove from in-memory cache
     this.removeUserFromRoom(userId, roomId);
   }
 

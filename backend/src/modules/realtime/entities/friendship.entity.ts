@@ -1,4 +1,4 @@
-import { Entity, PrimaryKey, Property, ManyToOne, Unique, OneToMany } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property, ManyToOne, Unique, OneToMany, Index } from "@mikro-orm/core";
 import { User } from "../../user/entities/user.entity";
 
 @Entity()
@@ -26,6 +26,7 @@ export class FriendRequest {
 
 //user<->user middle table
 @Entity()
+@Index({ properties: ['user', 'friend'] })
 export class Friendship {
   @PrimaryKey({ type: 'uuid' })
   id!: string;

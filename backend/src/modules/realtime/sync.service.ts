@@ -8,10 +8,10 @@ import { Room } from './entities/room.entity';
 
 export class SyncService {
   constructor(
-    private roomService?: any, // RoomService (optional to avoid circular dependency)
-    private friendshipService?: any, // FriendshipService (optional)
-    private messageService?: any, // MessageService (optional to avoid circular dependency)
-    private eventService?: any // EventService (optional to avoid circular dependency)
+    private roomService?: any, //optional to avoid circular dependency
+    private friendshipService?: any, 
+    private messageService?: any,
+    private eventService?: any
   ) {}
 
   setDependencies(roomService: any, friendshipService: any, messageService: any, eventService: any) {

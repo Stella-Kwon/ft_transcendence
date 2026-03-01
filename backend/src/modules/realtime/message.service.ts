@@ -153,22 +153,6 @@ export class MessageService {
     console.log(`[MessageService] Added ${messages.length} messages to cache for room ${roomId}`);
   }
 
-  // Remove message from cache
-  private removeMessageFromCache(roomId: string, messageId: string): void {
-    const messages = this.messageCache.get(roomId) || [];
-    const index = messages.findIndex(msg => msg.id === messageId);
-    if (index !== -1) {
-      //delete the message from index, how many
-      messages.splice(index, 1);
-      this.messageCache.set(roomId, messages);
-    }
-  }
-
-  // Clear cache for a room
-  private clearCache(roomId: string): void {
-    this.messageCache.delete(roomId);
-  }
-
   // save a chat message to a room's queue
   async saveChatMessage(
     em: EntityManager, 
@@ -195,33 +179,6 @@ export class MessageService {
   // Get all messages from a room (from cache)
   async getAllMessages(em: EntityManager, roomId: string): Promise<ChatMessage[]> {
     return await this.getMessagesFromCache(em, roomId);
-  }
-
-  // Clear all messages from a room
-  async clearMessages(em: EntityManager, roomId: string): Promise<boolean> {
-    try {
-      await em.nativeDelete(ChatMessageEntity, { roomId });
-      this.clearCache(roomId);
-      return true;
-    } catch (error) {
-      console.error('Error clearing messages:', error);
-      return false;
-    }
-  }
-
-  // Delete a specific message
-  async deleteMessage(em: EntityManager, roomId: string, messageId: string): Promise<boolean> {
-    try {
-      const message = await em.findOne(ChatMessageEntity, { id: messageId, roomId });
-      if (!message) return false;
-
-      await em.removeAndFlush(message);
-      this.removeMessageFromCache(roomId, messageId);
-      return true;
-    } catch (error) {
-      console.error('Error deleting message:', error);
-      return false;
-    }
   }
 
   // Create a chat message
@@ -257,7 +214,7 @@ export class MessageService {
   createPingMessage(): PingMessage {
     return {
       id: randomUUID(),
-      timestamp: Date.now(), // 이것이 ping 시작 시간
+      timestamp: Date.now(),
       version: '1.0',
       type: 'ping'
     };
@@ -271,7 +228,7 @@ export class MessageService {
       version: '1.0',
       type: 'pong',
       payload: {
-        latency: Date.now() - pingTimestamp // 원본 ping timestamp로 레이턴시 계산
+        latency: Date.now() - pingTimestamp
       }
     };
   }

@@ -184,7 +184,6 @@ export class WsConnectionService {
       if (userConns.size === 0) this.userWebConnection.delete(wsConnection.userId);
     }
 
-    // Emit offline status after removal
     await this.eventService.emitUserStatusUpdate({ userId: wsConnection.userId, isOnline: false });
 
     // Clean up EntityManager

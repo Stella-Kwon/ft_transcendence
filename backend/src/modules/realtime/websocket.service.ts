@@ -40,7 +40,7 @@ export class WebSocketService {
   }
 
   // Fastify plugin for WebSocket support
-  plugin: FastifyPluginAsync = async (fastify: FastifyInstance, options: FastifyPluginOptions) => {
+  plugin: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     await fastify.register(fastifyWebsocket);
 
     fastify.get('/ws', { websocket: true } as any, (connection: any, req: any) => {
@@ -154,11 +154,11 @@ export class WebSocketService {
   private async handleMessage(wsConnection: WebSocketConnection, data: Buffer) {
     let message: any;
 
-    try {
+    try {//buffer->string
       const rawMessage = data.toString();
 
       try {
-        message = JSON.parse(rawMessage);
+        message = JSON.parse(rawMessage); //string->jsObject
       } catch (parseError) {
         console.error('Invalid JSON received:', parseError);
         const errorMessage = WebSocketErrorHandler.createErrorMessage('INVALID_JSON', 'Invalid JSON format');
