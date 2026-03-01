@@ -5,16 +5,12 @@ import { RoomMember as RoomMemberEntity } from "./entities/room-member.entity";
 import { User } from "../user/entities/user.entity";
 import { NotFoundException } from "../../common/exceptions/NotFoundException";
 import { BadRequestException } from "../../common/exceptions/BadRequestException";
-import { EventService } from "./event.service";
-
 export class RoomService {
   // In-memory room tracking for WebSocket connections: caching for quick access
   private usersInRoom = new Map<string, Set<string>>(); // roomId -> Set of userId
   private roomsInUser = new Map<string, Set<string>>(); // userId -> Set of roomIds
 
-  constructor(
-    private eventService: EventService
-  ) {}
+  constructor() {}
 
 // <Database Operations> ---------------------------------
   async createRoom(em: EntityManager, name: string, masterId: string, description?: string, isPrivate = false, maxUsers = 50): Promise<Room> {
@@ -72,7 +68,7 @@ export class RoomService {
     return user;
   }
   
-  // Add users to room (database only, for HTTP API) - 다중 초대 지원
+  // Add users to room (database only, for HTTP API)
   async addUsersToRoomDatabase(em: EntityManager, roomId: string, inviteeNames: string[], inviterId: string, inviterName: string): Promise<{ success: string[], failed: { name: string, reason: string }[] }> {
     const room = await em.findOne(Room, { id: roomId }, { populate: ['members'] });
     if (!room) throw new NotFoundException('Room not found');
@@ -106,14 +102,6 @@ export class RoomService {
 
         room.members.add(member);
         this.addUserToRoomInMemory(inviteeUser.id, roomId);
-        if (inviteeUser.id !== inviterId) {
-          this.eventService.emitRoomJoined({
-            roomId: room.id,
-            roomName: room.name,
-            inviteeName: name,
-            inviterName: inviterName
-          });
-        }
 
         results.success.push(name);
         

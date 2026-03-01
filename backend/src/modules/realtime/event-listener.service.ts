@@ -8,7 +8,7 @@ import { UnreadCountMessage } from './dto/sync.schema';
 export class EventListenerService {
   constructor(
     private eventService: EventService,
-    private wsConnectionService: WsConnectionService,
+    private wsConnectionService: WsConnectionService, //=> send functions only i need could prevent circular dependency
     private friendshipService: FriendshipService,
     private orm: any // MikroORM instance
   ) {}

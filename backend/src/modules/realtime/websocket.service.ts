@@ -212,15 +212,6 @@ export class WebSocketService {
   private async broadcastToRoom(roomId: string, message: AnyMessage): Promise<void> {
     const userIds = this.roomService.getRoomMembersFromMemory(roomId);
 
-    for (const userId of userIds) {
-      await this.sendToUser(userId, message);
-    }
-  }
-
-  broadcastToAll(message: AnyMessage) {
-    const allConnections = this.wsConnectionService.getAllConnections();
-    for (const wsConnection of allConnections) {
-      this.sendMessage(wsConnection, message);
-    }
+    await Promise.allSettled(userIds.map(id => this.sendToUser(id, message)));
   }
 }

@@ -25,11 +25,11 @@ declare module "fastify" {
 	}
 }
 
-export const realtimeModule: FastifyPluginAsync = async (fastify, options) => {
+export const realtimeModule: FastifyPluginAsync = async (fastify) => {
   const eventService = new EventService();
   const messageService = new MessageService();
   const syncService = new SyncService();
-  const roomService = new RoomService(eventService);
+  const roomService = new RoomService();
 
   const wsConnectionService = new WsConnectionService(messageService, eventService, syncService);
 

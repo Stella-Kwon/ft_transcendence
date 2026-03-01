@@ -12,7 +12,6 @@ export interface WebSocketConnection {
   userId: string;
   email: string;
   name: string;
-  connectionId: string; //devices connection per user
   socket: any; // WebSocket instance
   entityManager: EntityManager; // Connection-specific EntityManager for each connection
 }
@@ -47,14 +46,12 @@ export class WsConnectionService {
     }
 
     const { id: userId, name, email } = user;
-    const connectionId = randomUUID();
 
     const wsConnection: WebSocketConnection = {
       socketId,
       userId,
       email,
       name,
-      connectionId,
       socket: connection.socket,
       entityManager: request.entityManager,
     };

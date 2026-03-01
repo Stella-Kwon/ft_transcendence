@@ -7,8 +7,6 @@ import {
 } from './dto';
 import { ChatMessage as ChatMessageEntity } from './entities/chat-message.entity';
 
-
-//later may better to implement archive message service to save old messages to old-mess-database and delete old messages from message-database
 export interface MessageQueue {
   id: string;
   roomId: string;
@@ -100,8 +98,8 @@ export class MessageService {
   }
 
   // Get messages from cache or database
-  private async getMessagesFromCache(em: EntityManager, roomId: string): Promise<ChatMessage[]> {
-    // 캐시에 있으면 반환
+  private async getMessagesFromCache(em: EntityManager, roomId: string): Promise<ChatMessage[]> 
+  {
     if (this.messageCache.has(roomId)) {
       return this.messageCache.get(roomId)!;
     }

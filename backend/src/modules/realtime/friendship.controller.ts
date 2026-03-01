@@ -377,7 +377,7 @@ export const friendshipController: FastifyPluginAsync = async (fastify) => {
             name: Type.String(),
             email: Type.String(),
             isOnline: Type.Boolean(),
-            connectedAt: Type.Optional(Type.Number()) // this need to be stored in db in usertable to retrieve. so for now undefined
+            connectedAt: Type.Optional(Type.Number())
           })),
           totalFriends: Type.Number(),
           onlineFriends: Type.Number()
@@ -396,17 +396,13 @@ export const friendshipController: FastifyPluginAsync = async (fastify) => {
       );
 
       const friendsWithStatus = friendsListResponse.payload.friends
-        .map((friend: any) => {
-          const isOnline = fastify.wsConnectionService.isUserOnline(friend.id);
-
-          return {
-            id: friend.id,
-            name: friend.name,
-            email: friend.email,
-            isOnline,
-            connectedAt: undefined
-          };
-        });
+        .map((friend: any) => ({
+          id: friend.id,
+          name: friend.name,
+          email: friend.email,
+          isOnline: friend.isOnline,
+          connectedAt: undefined
+        }));
 
       const onlineFriendsCount = friendsWithStatus.filter(friend => friend.isOnline).length;
       
@@ -431,7 +427,7 @@ export const friendshipController: FastifyPluginAsync = async (fastify) => {
             userId: Type.String(),
             name: Type.String(),
             email: Type.String(),
-            connectedAt: Type.Number()
+            connectedAt: Type.Optional(Type.Number())
           }))
         }),
         401: ErrorResponseDtoSchema,

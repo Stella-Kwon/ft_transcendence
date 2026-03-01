@@ -27,6 +27,6 @@ export class Room {
 	@Property({ onUpdate: () => new Date() })
 	updatedAt: Date = new Date();
 
-  @OneToMany(() => RoomMember, member => member.room, { orphanRemoval: true })
-  members = new Collection<RoomMember>(this);
+	@OneToMany(() => RoomMember, member => member.room, { orphanRemoval: true})
+	members = new Collection<RoomMember>(this);
 } 

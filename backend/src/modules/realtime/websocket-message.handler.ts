@@ -20,8 +20,8 @@ export class WebSocketMessageHandler {
     message: AnyMessage, 
     userId: string, 
     userName: string,
-    sendMessageCallback: (message: any) => void,
-    broadcastToRoomCallback: (roomId: string, message: any) => void,
+    sendMessageCallback: (message: any) => Promise<void>,
+    broadcastToRoomCallback: (roomId: string, message: any) => Promise<void>,
     socketId?: string // Add socketId for pong tracking
   ): Promise<void> {
     // console.log(`WebSocketMessageHandler: Processing ${message.type} for user ${userId}`);
@@ -64,7 +64,7 @@ export class WebSocketMessageHandler {
     message: ChatMessage, 
     userId: string, 
     userName: string,
-    broadcastToRoomCallback: (roomId: string, message: any) => void
+    broadcastToRoomCallback: (roomId: string, message: any) => Promise<void>
   ): Promise<void> {
     // console.log(`Processing chat message from ${userName} in room ${message.payload.roomId}`);
     // console.log(`Chat message details:`, {
@@ -106,7 +106,7 @@ export class WebSocketMessageHandler {
       // console.log(`Message saved to database:`, chatMessage.id);
 
       // Broadcast to room
-      broadcastToRoomCallback(roomId, chatMessage);
+      await broadcastToRoomCallback(roomId, chatMessage);
       // console.log(`Message broadcasted to room ${roomId}`);
       const roomMembers = await this.roomService.getRoomMembers(em, roomId);
       for (const member of roomMembers) {
@@ -131,7 +131,7 @@ export class WebSocketMessageHandler {
     em: EntityManager, 
     message: RoomStateMessage, 
     userId: string,
-    sendMessageCallback: (message: RoomStateMessage) => void
+    sendMessageCallback: (message: RoomStateMessage) => Promise<void>
   ): Promise<void> {
     const roomId = message.payload.room.id;
     // console.log(`Processing sync request for room ${roomId} from user ${userId}`);
@@ -229,7 +229,7 @@ export class WebSocketMessageHandler {
     //   totalMessages: roomData.previousMessages.length + roomData.unreadMessages.length,
     //   members: roomMembers.length
     // });
-    sendMessageCallback(roomStateMessage);
+    await sendMessageCallback(roomStateMessage);
   }
 
   private async handleMarkReadMessage(
@@ -267,13 +267,13 @@ export class WebSocketMessageHandler {
 
   private async handlePingMessage(
     message: PingMessage, 
-    sendMessageCallback: (message: any) => void
+    sendMessageCallback: (message: any) => Promise<void>
   ): Promise<void> {
     // console.log(`Creating pong response for ping message:`, message.id);
     // Create pong response using existing timestamp
     const pongMessage = this.messageService.createPongMessage(message.timestamp);
     // console.log(`Sending pong response:`, pongMessage);
-    sendMessageCallback(pongMessage);
+    await sendMessageCallback(pongMessage);
   }
 
   private async handlePongMessage(socketId?: string): Promise<void> {
