@@ -31,10 +31,10 @@ export class Friendship {
   @PrimaryKey({ type: 'uuid' })
   id!: string;
 
-  @ManyToOne(() => User, { deleteRule: 'cascade' })
+  @ManyToOne(() => User)
   user!: User;
 
-  @ManyToOne(() => User, { deleteRule: 'cascade' })
+  @ManyToOne(() => User)
   friend!: User;
 
   @Property()
