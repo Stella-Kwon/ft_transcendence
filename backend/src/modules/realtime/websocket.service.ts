@@ -211,7 +211,7 @@ export class WebSocketService {
 
   private async broadcastToRoom(roomId: string, message: AnyMessage): Promise<void> {
     const userIds = this.roomService.getRoomMembersFromMemory(roomId);
-
+    
     await Promise.allSettled(userIds.map(id => this.sendToUser(id, message)));
   }
 }

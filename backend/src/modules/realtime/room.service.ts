@@ -2,6 +2,7 @@ import { EntityManager } from "@mikro-orm/core";
 import { randomUUID } from 'crypto';
 import { Room } from "./entities/room.entity";
 import { RoomMember as RoomMemberEntity } from "./entities/room-member.entity";
+import { UserReadMessageEntity } from "./entities/user-read-message.entity";
 import { User } from "../user/entities/user.entity";
 import { NotFoundException } from "../../common/exceptions/NotFoundException";
 import { BadRequestException } from "../../common/exceptions/BadRequestException";
@@ -102,6 +103,16 @@ export class RoomService {
 
         room.members.add(member);
         this.addUserToRoomInMemory(inviteeUser.id, roomId);
+
+        const userReadMessage = em.create(UserReadMessageEntity, {
+          id: randomUUID(),
+          user: inviteeUser,
+          room,
+          lastReadTimestamp: Date.now(),
+          unreadCount: 0,
+          updatedAt: new Date()
+        });
+        em.persist(userReadMessage);
 
         results.success.push(name);
         

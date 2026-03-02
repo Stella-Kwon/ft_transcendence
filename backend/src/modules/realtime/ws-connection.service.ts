@@ -109,7 +109,6 @@ export class WsConnectionService {
         return;
       }
     }
-
     console.error(`EntityManager not available after ${maxRetries} attempts, closing connection`);
     this.handleConnectionClose(wsConnection.socketId);
   }
@@ -257,10 +256,6 @@ export class WsConnectionService {
 
   getConnection(socketId: string): WebSocketConnection | undefined {
     return this.connections.get(socketId);
-  }
-
-  getAllConnections(): WebSocketConnection[] {
-    return Array.from(this.connections.values());
   }
 
   getUserConnections(userId: string): WebSocketConnection[] {
