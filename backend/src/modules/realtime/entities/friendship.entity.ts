@@ -7,10 +7,10 @@ export class FriendRequest {
   @PrimaryKey({ type: 'uuid' })
   id!: string;
 
-  @ManyToOne(() => User, { deleteRule: 'cascade' })
+  @ManyToOne(() => User)
   requester!: User;
 
-  @ManyToOne(() => User, { deleteRule: 'cascade' })
+  @ManyToOne(() => User)
   addressee!: User;
 
   @Property()
