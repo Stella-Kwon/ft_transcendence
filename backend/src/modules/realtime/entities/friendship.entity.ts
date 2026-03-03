@@ -1,4 +1,4 @@
-import { Entity, PrimaryKey, Property, ManyToOne, Unique, OneToMany, Index } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property, ManyToOne, Unique, Index } from "@mikro-orm/core";
 import { User } from "../../user/entities/user.entity";
 
 @Entity()
@@ -40,6 +40,6 @@ export class Friendship {
   @Property()
   status: 'active' | 'blocked' = 'active';
   
-  @Property({ type: 'timestamptz'})
+  @Property()
   createdAt?: Date;
 }

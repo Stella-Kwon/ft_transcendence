@@ -73,12 +73,11 @@ export class WsConnectionService {
   }
 
   private async initializeConnection(wsConnection: WebSocketConnection) {
-    if (wsConnection.entityManager) {
-      await this.flushBufferedMessages(wsConnection.userId); // better doing in data-base for server crash reason. fix for later
-      await this.restoreUserSession(wsConnection);
-    } else {
+    if (!wsConnection.entityManager) 
       await this.waitForEntityManager(wsConnection);
-    }
+    
+    await this.flushBufferedMessages(wsConnection.userId);
+    await this.restoreUserSession(wsConnection);
 
     this.setupPingInterval(wsConnection);
   }

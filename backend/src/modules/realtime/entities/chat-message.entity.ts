@@ -1,6 +1,7 @@
-import { Entity, PrimaryKey, Property, Enum } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property, Enum, Index } from "@mikro-orm/core";
 
 @Entity()
+@Index({properties:['roomId', 'timestamp']})
 export class ChatMessage {
   @PrimaryKey({ type: 'uuid' })
   id!: string;

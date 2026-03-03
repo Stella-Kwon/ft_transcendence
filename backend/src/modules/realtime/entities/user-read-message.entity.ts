@@ -1,9 +1,10 @@
-import { Entity, PrimaryKey, Property, ManyToOne } from "@mikro-orm/core";
+import { Entity, PrimaryKey, Property, Unique, ManyToOne } from "@mikro-orm/core";
 import { User } from "../../user/entities/user.entity";
 import { Room } from "./room.entity";
 import { v4 } from "uuid";
 
 @Entity()
+@Unique({ properties: ['user', 'room'] })
 export class UserReadMessageEntity {
   @PrimaryKey()
   id!: string;

@@ -153,6 +153,8 @@ export class WebSocketService {
 
   private async handleMessage(wsConnection: WebSocketConnection, data: Buffer) {
     let message: any;
+    let em = wsConnection.entityManager;
+    let forkedEm = em;
 
     try {//buffer->string
       const rawMessage = data.toString();
@@ -166,8 +168,12 @@ export class WebSocketService {
         return;
       }
 
+      if (em) {
+        forkedEm = wsConnection.entityManager.fork();
+      }
+
       await this.messageHandler.handleMessage(
-        wsConnection.entityManager,
+        forkedEm,
         message,
         wsConnection.userId,
         wsConnection.name,
@@ -187,8 +193,16 @@ export class WebSocketService {
           error: error instanceof Error ? error.message : 'Unknown error'
         }
       );
-
       this.sendMessage(wsConnection, errorMessage);
+    }finally{
+      if (forkedEm !== em && typeof forkedEm.clear === 'function' ){
+        try{
+          forkedEm.clear()
+        }catch(error)
+        {
+          console.warn('Failed to clean up the forked EntityManager: ', error);
+        }
+      }
     }
   }
 
