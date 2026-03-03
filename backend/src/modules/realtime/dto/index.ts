@@ -33,25 +33,25 @@ import {
   type FriendPendingRequestPayloadSchema
 } from './friend.schema';
 
-// WebSocket 클라이언트 → 서버 메시지 스키마 (실제로 받는 것들만)
+
 export const messageSchema = Type.Union([
-  chatMessageSchema,        // 실시간 채팅
-  roomStateMessageSchema,   // 룸 상태 동기화 요청
-  leaveRoomMessageSchema,   // 룸 나가기 요청
-  markReadMessageSchema,    // 메시지 읽음 처리
-  pingMessageSchema,        // 연결 상태 확인
-  pongMessageSchema,        // ping 응답
-  errorMessageSchema,       // 에러 메시지
+  chatMessageSchema,
+  roomStateMessageSchema,
+  leaveRoomMessageSchema,
+  markReadMessageSchema,
+  pingMessageSchema,
+  pongMessageSchema,
+  errorMessageSchema,
 ]);
 
-// 서버 → 클라이언트 알림 스키마 (EventListenerService에서 사용)
+
 export const notificationSchema = Type.Union([
-  friendRequestSchema,      // 친구 요청 알림
-  friendRequestResponseSchema, // 친구 요청 응답 알림
-  friendListResponseSchema, // 친구 목록 업데이트
-  roomJoinedMessageSchema,  // 룸 참여 알림
-  roomStateMessageSchema,   // 룸 상태 동기화
-  unreadCountMessageSchema, // 읽지 않은 메시지 수 업데이트
+  friendRequestSchema, 
+  friendRequestResponseSchema,
+  friendListResponseSchema,
+  roomJoinedMessageSchema,
+  roomStateMessageSchema,
+  unreadCountMessageSchema,
 ]);
 
 export type AnyMessage = Static<typeof messageSchema>;
