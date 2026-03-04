@@ -114,7 +114,7 @@ export class SyncService {
     const unreadMessages: ChatMessage[] = [];
 
     for (const msgEntity of allMessageEntities) {
-      const chatMessage = this.messageService?.setMapInChatMessageForm([msgEntity])?.[0];
+      const chatMessage = this.messageService?.setInChatMessageForm(msgEntity);
       if (chatMessage) {
         if (msgEntity.timestamp <= lastReadTimestamp) {
           previousMessages.push(chatMessage);
@@ -123,7 +123,6 @@ export class SyncService {
         }
       }
     }
-
     // Save messages to memory cache
     if (this.messageService && (previousMessages.length > 0 || unreadMessages.length > 0)) {
       const allMessages = [...previousMessages, ...unreadMessages];

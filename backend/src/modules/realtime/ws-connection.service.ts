@@ -197,16 +197,21 @@ export class WsConnectionService {
   //no async due to prevent mixing up the sequence in bufferMessage
   sendMessage(wsConnection: WebSocketConnection, message: any) {
     try {
-      if (wsConnection.socket.readyState === WebSocket.OPEN) {
+      const state = wsConnection.socket.readyState;
+      if (state === WebSocket.OPEN) {
         wsConnection.socket.send(JSON.stringify(message));
       } else {
         this.bufferMessage(wsConnection.userId, message);
-        this.handleConnectionClose(wsConnection.socketId);
+        if (state === WebSocket.CLOSED) {
+          this.handleConnectionClose(wsConnection.socketId);
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
       this.bufferMessage(wsConnection.userId, message);
-      this.handleConnectionClose(wsConnection.socketId);
+      if (wsConnection.socket.readyState === WebSocket.CLOSED) {
+        this.handleConnectionClose(wsConnection.socketId);
+      }
     }
   }
 
