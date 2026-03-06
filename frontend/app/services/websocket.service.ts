@@ -31,7 +31,8 @@ export class WebSocketService {
   private pingInterval: NodeJS.Timeout | null = null;
   private eventHandlers: WebSocketEventHandlers = {};
   private connectionStatus: ConnectionStatus = 'disconnected';
-
+  private previousChatMessage: Map<string, ChatMessage> = new Map();
+  
   async connect(handlers: WebSocketEventHandlers = {}): Promise<void> {
     this.eventHandlers = { ...this.eventHandlers, ...handlers };
 
@@ -132,6 +133,12 @@ export class WebSocketService {
       console.error('User not authenticated, cannot send message');
       return;
     }
+    const preMess = this.previousChatMessage.get(roomId);
+
+    if (preMess &&
+      content ==  preMess?.payload.content &&
+      Date.now() - preMess.timestamp < 3000 )
+      return;
     const message: ChatMessage = {
       id: generateId(),
       timestamp: Date.now(),
@@ -145,7 +152,7 @@ export class WebSocketService {
         messageType: 'text'
       }
     };
-
+    this.previousChatMessage.set(roomId, message);
     this.send(message);
   }
 
@@ -165,7 +172,6 @@ export class WebSocketService {
         lastReadTimestamp: messageTimestamp
       }
     };
-
     this.send(message);
   }
 
